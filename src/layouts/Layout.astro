@@ -1,0 +1,136 @@
+---
+interface Props {
+  title?:       string;
+  description?: string;
+  canonical?:   string;
+  ogImage?:     string;
+}
+
+const SITE = 'https://depoaudio.com';
+
+const {
+  title       = 'DepoAudio — Free Court Recording Audio Converter for Windows & macOS',
+  description = 'Free desktop app that converts SGMCA, FTR (.trm), BWF, and DigitalCAT court recording audio to WAV, MP3, FLAC, or Opus. Built on Tauri 2 + Rust. No subscriptions, no cloud uploads — everything runs locally.',
+  canonical   = Astro.url.pathname,
+  ogImage     = '/og.png',
+} = Astro.props;
+
+const canonicalURL = new URL(canonical, SITE).toString();
+const ogImageURL   = new URL(ogImage,   SITE).toString();
+
+const softwareSchema = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "DepoAudio",
+  "applicationCategory": "MultimediaApplication",
+  "applicationSubCategory": "Audio Converter",
+  "operatingSystem": "Windows 10, Windows 11, macOS 12, macOS 13, macOS 14, macOS 15",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "description": description,
+  "softwareVersion": "1.0.0",
+  "license": "https://opensource.org/licenses/MIT",
+  "url": SITE,
+  "downloadUrl": "https://github.com/mayes/depo-audio/releases/latest",
+  "releaseNotes": "https://github.com/mayes/depo-audio/releases",
+  "codeRepository": "https://github.com/mayes/depo-audio",
+  "author": {
+    "@type": "Person",
+    "name": "Andrew Mayes",
+    "url": "https://andrewmayes.com",
+    "worksFor": {
+      "@type": "Organization",
+      "name": "Executive Reporting Service",
+      "url": "https://executivereportingservice.com"
+    }
+  },
+  "keywords": "sgmca converter, ftr audio converter, trm file converter, court reporter audio converter, court recording audio software, bwf converter, stenograph audio export, convert court recording, court reporting software, sgmca to wav, ftr to mp3, free court recording converter"
+};
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is an SGMCA file?",
+      "acceptedAnswer": { "@type": "Answer", "text": "An SGMCA file is a proprietary audio format created by Stenograph's Case CATalyst software. It is an Ogg Vorbis audio file with a 96-byte proprietary header prepended. DepoAudio strips that header and converts the audio to WAV, MP3, FLAC, or Opus without quality loss." }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I convert SGMCA files to WAV or MP3?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Download DepoAudio (free, Windows and macOS), drag your SGMCA files into the window, choose WAV or MP3 as your output format, and click Convert. No command line, no additional software needed — FFmpeg is bundled." }
+    },
+    {
+      "@type": "Question",
+      "name": "Can DepoAudio convert FTR (.trm) recordings?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. FTR Gold saves recordings as multiple .trm files (typically one per 5-minute segment). Drop all .trm files for a session together into DepoAudio, and it will convert them in sequence. FTR uses a non-standard AAC codec tag (0x4180) which DepoAudio handles automatically." }
+    },
+    {
+      "@type": "Question",
+      "name": "Does DepoAudio upload my recordings to the cloud?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. DepoAudio makes zero network calls during conversion. The entire pipeline runs locally using a bundled copy of FFmpeg. Your client recordings never leave your machine." }
+    },
+    {
+      "@type": "Question",
+      "name": "What output formats does DepoAudio support?",
+      "acceptedAnswer": { "@type": "Answer", "text": "DepoAudio exports to WAV (lossless PCM, best for editing), MP3 at 192 kbps (best for sending to scopists), FLAC (lossless compressed, best for archival), and Opus (voice-optimized, smallest files). You can also split multi-channel recordings into one file per participant — Reporter, Witness, Attorney." }
+    },
+    {
+      "@type": "Question",
+      "name": "Is DepoAudio free?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. DepoAudio is free and open source under the MIT license. No subscription, no account, no usage limits. Download once and use it forever." }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I convert Eclipse AudioSync (.aes) files?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Not directly — .aes files are AES-128 encrypted. However, Eclipse CAT lets you export audio manually: File > Export Audio > WAV. Once exported, drop the WAV into DepoAudio for further processing." }
+    }
+  ]
+};
+
+const orgSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Executive Reporting Service",
+  "url": "https://executivereportingservice.com",
+  "sameAs": ["https://github.com/mayes/depo-audio"]
+};
+---
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title}</title>
+  <meta name="description"   content={description} />
+  <meta name="keywords"      content="sgmca converter, sgmca to wav, ftr audio converter, trm converter, court reporter audio converter, court recording software, bwf converter, stenograph audio export, convert court recording audio, court reporting audio, ftr to mp3, ftr to wav, free court recording converter, depoaudio" />
+  <link rel="canonical"      href={canonicalURL} />
+  <meta property="og:type"        content="website" />
+  <meta property="og:url"         content={canonicalURL} />
+  <meta property="og:title"       content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:image"       content={ogImageURL} />
+  <meta property="og:site_name"   content="DepoAudio" />
+  <meta name="twitter:card"        content="summary_large_image" />
+  <meta name="twitter:title"       content={title} />
+  <meta name="twitter:description" content={description} />
+  <meta name="twitter:image"       content={ogImageURL} />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <script is:inline>
+    try {
+      const t = localStorage.getItem('da-theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+      document.documentElement.style.background = t === 'light' ? '#f5f0e8' : '#0b0f16';
+    } catch(e) {}
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+  <link rel="preconnect" href="https://fonts.gstatic.com"   crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script type="application/ld+json" set:html={JSON.stringify(softwareSchema)} />
+  <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+  <script type="application/ld+json" set:html={JSON.stringify(orgSchema)} />
+</head>
+<body>
+  <slot />
+</body>
+</html>

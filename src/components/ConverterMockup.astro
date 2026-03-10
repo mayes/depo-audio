@@ -1,0 +1,180 @@
+---
+// ConverterMockup.astro
+// Dark-mode SVG illustration of the DepoAudio converter interface
+---
+<div class="mockup-wrap" aria-hidden="true" role="img" aria-label="DepoAudio converter interface showing SGMCA file being converted to WAV with stereo mix mode selected">
+  <svg viewBox="0 0 760 520" fill="none" xmlns="http://www.w3.org/2000/svg" class="mockup-svg">
+    <!-- Window frame -->
+    <rect width="760" height="520" rx="10" fill="#111820"/>
+    <rect x=".5" y=".5" width="759" height="519" rx="9.5" stroke="#243044"/>
+
+    <!-- Topbar -->
+    <rect width="760" height="50" rx="10" fill="#161e2a"/>
+    <rect y="10" width="760" height="40" fill="#161e2a"/>
+    <rect y="49" width="760" height="1" fill="#243044"/>
+
+    <!-- Logo icon -->
+    <circle cx="24" cy="25" r="10" stroke="rgba(196,154,54,.3)" stroke-width="1"/>
+    <rect x="19" y="27" width="2" height="5" rx="1" fill="rgba(196,154,54,.4)"/>
+    <rect x="22" y="23" width="2" height="9" rx="1" fill="rgba(196,154,54,.68)"/>
+    <rect x="25" y="19" width="2.5" height="13" rx="1.25" fill="#c49a36"/>
+    <rect x="28.5" y="23" width="2" height="9" rx="1" fill="rgba(196,154,54,.68)"/>
+    <rect x="32" y="27" width="2" height="5" rx="1" fill="rgba(196,154,54,.4)"/>
+
+    <!-- Wordmark -->
+    <text x="40" y="29" font-family="Georgia,serif" font-size="13" font-weight="600" fill="#d4aa4a">DepoAudio</text>
+    <text x="40" y="40" font-family="monospace" font-size="8" fill="#5a7090">Court Recording Converter</text>
+
+    <!-- Tab bar -->
+    <rect x="310" y="12" width="140" height="27" rx="7" fill="#1c2738" stroke="#243044" stroke-width="1"/>
+    <rect x="313" y="15" width="64" height="21" rx="5" fill="rgba(196,154,54,.14)"/>
+    <text x="345" y="30" font-family="sans-serif" font-size="11" font-weight="600" fill="#c49a36" text-anchor="middle">Convert</text>
+    <text x="413" y="30" font-family="sans-serif" font-size="11" font-weight="600" fill="#5a7090" text-anchor="middle">Library</text>
+
+    <!-- Theme toggle -->
+    <rect x="710" y="11" width="28" height="28" rx="6" fill="#1c2738" stroke="#243044" stroke-width="1"/>
+    <text x="724" y="29" font-family="sans-serif" font-size="13" fill="#8fa5c2" text-anchor="middle">☾</text>
+
+    <!-- Download button -->
+    <rect x="740" y="11" width="0" height="28" rx="6" fill="#c49a36"/>
+
+    <!-- ── MODE CARDS ── -->
+    <rect x="20" y="66" width="720" height="78" rx="8" fill="#161e2a" stroke="#243044" stroke-width="1"/>
+    <rect x="20" y="66" width="720" height="1" fill="#243044"/>
+    <!-- panel label -->
+    <text x="32" y="81" font-family="monospace" font-size="8" letter-spacing="1" fill="#5a7090">OUTPUT MODE</text>
+    <rect x="20" y="84" width="720" height="1" fill="#1a2535"/>
+
+    <!-- Mode card 1 active -->
+    <rect x="20" y="84" width="240" height="60" fill="#1c2738"/>
+    <rect x="20" y="84" width="240" height="2" fill="#c49a36"/>
+    <rect x="32" y="96" width="34" height="34" rx="7" fill="rgba(196,154,54,.14)" stroke="#c49a36" stroke-width="1"/>
+    <!-- stereo bars icon -->
+    <rect x="36" y="107" width="3" height="10" rx="1.5" fill="#c49a36"/>
+    <rect x="40.5" y="104" width="3" height="13" rx="1.5" fill="#c49a36" opacity=".7"/>
+    <rect x="45" y="101" width="3.5" height="16" rx="1.75" fill="#c49a36"/>
+    <rect x="49.5" y="104" width="3" height="13" rx="1.5" fill="#c49a36" opacity=".7"/>
+    <rect x="54" y="107" width="3" height="10" rx="1.5" fill="#c49a36" opacity=".4"/>
+    <text x="72" y="107" font-family="sans-serif" font-size="11" font-weight="600" fill="#dde5f2">Mix to Stereo</text>
+    <text x="72" y="119" font-family="sans-serif" font-size="9" fill="#5a7090">All channels blended to one stereo file</text>
+    <text x="246" y="106" font-family="sans-serif" font-size="11" fill="#c49a36" text-anchor="end">✓</text>
+
+    <!-- Mode card 2 -->
+    <rect x="260" y="84" width="240" height="60" fill="#161e2a"/>
+    <rect x="260" y="84" width="1" height="60" fill="#1a2535"/>
+    <rect x="272" y="96" width="34" height="34" rx="7" fill="#161e2a" stroke="#243044" stroke-width="1"/>
+    <rect x="276" y="101" width="3" height="16" rx="1.5" fill="#5a7090" opacity=".6"/>
+    <rect x="281" y="98" width="3.5" height="20" rx="1.75" fill="#5a7090"/>
+    <rect x="286" y="103" width="3" height="12" rx="1.5" fill="#5a7090" opacity=".7"/>
+    <rect x="291" y="99" width="3.5" height="18" rx="1.75" fill="#5a7090" opacity=".85"/>
+    <rect x="296" y="101" width="3" height="14" rx="1.5" fill="#5a7090" opacity=".5"/>
+    <text x="312" y="107" font-family="sans-serif" font-size="11" font-weight="600" fill="#8fa5c2">Keep Original</text>
+    <text x="312" y="119" font-family="sans-serif" font-size="9" fill="#5a7090">Convert container, preserve channel layout</text>
+
+    <!-- Mode card 3 -->
+    <rect x="500" y="84" width="240" height="60" fill="#161e2a"/>
+    <rect x="500" y="84" width="1" height="60" fill="#1a2535"/>
+    <rect x="512" y="96" width="34" height="34" rx="7" fill="#161e2a" stroke="#243044" stroke-width="1"/>
+    <rect x="516" y="101" width="6" height="16" rx="3" fill="#c49a36" opacity=".5"/>
+    <rect x="524" y="98" width="6" height="20" rx="3" fill="#4a8fdf" opacity=".9"/>
+    <rect x="532" y="103" width="6" height="12" rx="3" fill="#3a9e6a" opacity=".7"/>
+    <rect x="540" y="105" width="5" height="7" rx="2.5" fill="#c94e4e" opacity=".5"/>
+    <text x="552" y="107" font-family="sans-serif" font-size="11" font-weight="600" fill="#8fa5c2">Split Channels</text>
+    <text x="552" y="119" font-family="sans-serif" font-size="9" fill="#5a7090">One file per participant, named by role</text>
+
+    <!-- ── CHANNEL MIX SLIDERS ── -->
+    <rect x="20" y="144" width="720" height="98" rx="0" fill="#161e2a" stroke="#243044" stroke-width="0"/>
+    <rect x="20" y="144" width="720" height="1" fill="#1a2535"/>
+    <text x="32" y="158" font-family="monospace" font-size="8" letter-spacing="1" fill="#5a7090">CHANNEL MIX</text>
+    <!-- 4 sliders -->
+    {[
+      { y: 168, color: '#c49a36', label: 'Reporter',   val: 1.0,  barW: 220 },
+      { y: 188, color: '#4a8fdf', label: 'Witness',    val: 1.2,  barW: 264 },
+      { y: 208, color: '#3a9e6a', label: 'Attorney 1', val: 0.8,  barW: 176 },
+      { y: 228, color: '#c94e4e', label: 'Attorney 2', val: 0.6,  barW: 132 },
+    ].map(s => `
+      <circle cx="36" cy="${s.y + 3}" r="4" fill="${s.color}"/>
+      <text x="46" y="${s.y + 7}" font-family="sans-serif" font-size="9" fill="#8fa5c2" dominant-baseline="middle">${s.label}</text>
+      <rect x="135" y="${s.y + 1}" width="440" height="4" rx="2" fill="#243044"/>
+      <rect x="135" y="${s.y + 1}" width="${s.barW}" height="4" rx="2" fill="${s.color}" opacity=".7"/>
+      <circle cx="${135 + s.barW}" cy="${s.y + 3}" r="7" fill="${s.color}" stroke="#111820" stroke-width="2"/>
+      <text x="590" y="${s.y + 7}" font-family="monospace" font-size="9" fill="#5a7090" text-anchor="start">${s.val.toFixed(2)}</text>
+    `).join('')}
+
+    <!-- ── PROCESSING toggles ── -->
+    <rect x="20" y="246" width="720" height="86" rx="0" fill="#161e2a" stroke="#1a2535" stroke-width="1"/>
+    <rect x="20" y="246" width="720" height="1" fill="#1a2535"/>
+    <text x="32" y="260" font-family="monospace" font-size="8" letter-spacing="1" fill="#5a7090">PROCESSING</text>
+    {[
+      { y: 268, label: 'High-Pass Filter', sub: '80 Hz cutoff — removes HVAC hum', on: true  },
+      { y: 285, label: 'Normalize',         sub: 'Loudnorm — targets −16 LUFS',       on: true  },
+      { y: 302, label: 'Trim Silence',      sub: 'Remove leading/trailing silence',   on: false },
+      { y: 319, label: 'Fade In / Out',     sub: '0.5s fade',                         on: true  },
+    ].map(p => `
+      <text x="32" y="${p.y + 8}" font-family="sans-serif" font-size="10" font-weight="600" fill="#dde5f2">${p.label}</text>
+      <text x="160" y="${p.y + 8}" font-family="sans-serif" font-size="9" fill="#5a7090">${p.sub}</text>
+      <rect x="690" y="${p.y}" width="38" height="20" rx="10" fill="${p.on ? '#c49a36' : '#2e4060'}"/>
+      <circle cx="${p.on ? 718 : 700}" cy="${p.y + 10}" r="8" fill="#111820"/>
+    `).join('')}
+
+    <!-- Filter chain strip -->
+    <rect x="20" y="332" width="720" height="22" fill="#1c2738"/>
+    <text x="32" y="346" font-family="monospace" font-size="8" letter-spacing="1" fill="#5a7090">CHAIN</text>
+    <rect x="70" y="336" width="62" height="14" rx="3" fill="rgba(196,154,54,.14)" stroke="rgba(196,154,54,.2)" stroke-width="1"/>
+    <text x="101" y="347" font-family="monospace" font-size="9" fill="#c49a36" text-anchor="middle">HPF 80Hz</text>
+    <text x="137" y="347" font-family="sans-serif" font-size="9" fill="#5a7090">→</text>
+    <rect x="145" y="336" width="62" height="14" rx="3" fill="rgba(196,154,54,.14)" stroke="rgba(196,154,54,.2)" stroke-width="1"/>
+    <text x="176" y="347" font-family="monospace" font-size="9" fill="#c49a36" text-anchor="middle">Loudnorm</text>
+    <text x="211" y="347" font-family="sans-serif" font-size="9" fill="#5a7090">→</text>
+    <rect x="219" y="336" width="50" height="14" rx="3" fill="rgba(196,154,54,.14)" stroke="rgba(196,154,54,.2)" stroke-width="1"/>
+    <text x="244" y="347" font-family="monospace" font-size="9" fill="#c49a36" text-anchor="middle">Fade 0.5s</text>
+
+    <!-- ── DROP ZONE ── -->
+    <rect x="20" y="358" width="720" height="72" rx="8" fill="#0f1720" stroke="#243044" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <!-- waveform icon -->
+    <rect x="350" y="374" width="4" height="8" rx="2" fill="#c49a36" opacity=".3"/>
+    <rect x="356" y="371" width="4" height="14" rx="2" fill="#c49a36" opacity=".55"/>
+    <rect x="362" y="367" width="4" height="22" rx="2" fill="#c49a36" opacity=".8"/>
+    <rect x="368" y="371" width="4" height="14" rx="2" fill="#c49a36" opacity=".55"/>
+    <rect x="374" y="374" width="4" height="8" rx="2" fill="#c49a36" opacity=".3"/>
+    <text x="395" y="381" font-family="sans-serif" font-size="12" font-weight="600" fill="#dde5f2">Drop audio files here</text>
+    <text x="395" y="397" font-family="sans-serif" font-size="10" fill="#5a7090">or <tspan fill="#c49a36" text-decoration="underline">click to browse</tspan> — SGMCA · TRM · BWF · WAV · MP3 + more</text>
+
+    <!-- ── FILE ROW (converted) ── -->
+    <rect x="20" y="438" width="720" height="46" rx="6" fill="#161e2a" stroke="rgba(58,158,106,.4)" stroke-width="1"/>
+    <!-- file icon green -->
+    <rect x="32" y="451" width="12" height="16" rx="1.5" stroke="#3a9e6a" stroke-width="1.2" fill="none"/>
+    <path d="M40 451 l4 4 v-4z" fill="#3a9e6a" stroke="#3a9e6a" stroke-width=".5"/>
+    <text x="52" y="461" font-family="sans-serif" font-size="11" font-weight="600" fill="#dde5f2">Smith_MetroTransit_11-14-2025.sgmca</text>
+    <rect x="52" y="464" width="4" height="4" rx="1" fill="#5a7090"/>
+    <text x="58" y="468" font-family="sans-serif" font-size="9" fill="#5a7090">/Users/andrew/Depositions/Smith_MetroTransit_11-14-2025.sgmca</text>
+    <!-- done chip -->
+    <rect x="605" y="449" width="55" height="18" rx="4" fill="rgba(58,158,106,.1)"/>
+    <text x="632" y="462" font-family="monospace" font-size="9" fill="#3a9e6a" text-anchor="middle">✓ Done</text>
+    <!-- play button -->
+    <circle cx="682" cy="458" r="11" fill="rgba(196,154,54,.14)" stroke="rgba(196,154,54,.3)" stroke-width="1"/>
+    <path d="M679 454 l6 4-6 4z" fill="#c49a36"/>
+    <!-- progress track -->
+    <rect x="695" y="455" width="34" height="4" rx="2" fill="#243044"/>
+    <rect x="695" y="455" width="18" height="4" rx="2" fill="#c49a36"/>
+
+    <!-- ── BOTTOM BAR ── -->
+    <rect x="0" y="488" width="760" height="32" fill="#111820"/>
+    <rect x="0" y="488" width="760" height="1" fill="#243044"/>
+    <rect x="24" y="494" width="120" height="20" rx="10" fill="rgba(58,158,106,.1)"/>
+    <circle cx="37" cy="504" r="3" fill="#3a9e6a"/>
+    <text x="45" y="508" font-family="monospace" font-size="9" fill="#3a9e6a">1 file converted</text>
+    <!-- Convert button -->
+    <rect x="614" y="492" width="126" height="28" rx="6" fill="#c49a36"/>
+    <text x="677" y="510" font-family="sans-serif" font-size="12" font-weight="700" fill="#0b0f16" text-anchor="middle">▶ Convert</text>
+  </svg>
+</div>
+
+<style>
+  .mockup-wrap {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(36,48,68,.8);
+  }
+  .mockup-svg { display: block; width: 100%; height: auto; }
+</style>

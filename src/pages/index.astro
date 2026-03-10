@@ -1,0 +1,759 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Nav from '../components/Nav.astro';
+import ConverterMockup from '../components/ConverterMockup.astro';
+import LibraryMockup from '../components/LibraryMockup.astro';
+import '../styles/global.css';
+
+const MAC_SVG = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M10.5 7.5c0-1.8 1.5-2.7 1.5-2.7s-1.1-1.5-2.8-1.5c-1.2 0-2 .7-2.5.7-.6 0-1.4-.7-2.5-.7C2.3 3.3 1 4.7 1 6.8c0 2.8 2 5.2 3 5.2.6 0 1.2-.6 2-.6s1.3.6 2 .6c1 0 2.7-2 2.7-2s-.7-.7-1.2-2.5z" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M9 1.5c-.4.8-1.5 1.5-2.3 1.4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>`;
+const WIN_SVG = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><rect x="1" y="1" width="5.5" height="5.5" rx=".5" stroke="currentColor" stroke-width="1.2"/><rect x="7.5" y="1" width="5.5" height="5.5" rx=".5" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="7.5" width="5.5" height="5.5" rx=".5" stroke="currentColor" stroke-width="1.2"/><rect x="7.5" y="7.5" width="5.5" height="5.5" rx=".5" stroke="currentColor" stroke-width="1.2"/></svg>`;
+const DL_SVG  = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1v9M4 7l4 4 4-4M2 13h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const CHV_SVG = `<svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 4l3.5 3.5L9 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+const formats = [
+  { ext:'.sgmca',                                          vendor:'Stenograph · Case CATalyst',      ch:'4 ch',    status:'supported',    note:'Ogg Vorbis with a 96-byte proprietary header — stripped automatically. The most common format for CATalyst users.' },
+  { ext:'.trm  .ftr',                                      vendor:'For The Record · FTR Gold',       ch:'4–16 ch', status:'experimental', note:'Non-standard AAC codec tag (0x4180). Drop all .trm segments for a session together and they convert in sequence.' },
+  { ext:'.bwf',                                            vendor:'CourtSmart · Various courtroom',  ch:'varies',  status:'supported',    note:null },
+  { ext:'.dm',                                             vendor:'Stenovations · DigitalCAT',       ch:'—',       status:'experimental', note:'No public spec — please file a GitHub issue with test results.' },
+  { ext:'.aes',                                            vendor:'Eclipse CAT · AudioSync',         ch:'—',       status:'encrypted',    note:'AES-128 encrypted. Export first: File → Export Audio → WAV in Eclipse, then drop the WAV into DepoAudio.' },
+  { ext:'.wav  .mp3  .wma  .m4a  .ogg  .opus  .flac  .aif', vendor:'Eclipse · ProCAT · StenoCAT · Standard', ch:'any', status:'supported', note:null },
+];
+
+const features = [
+  { icon:'waveform', title:'Three output modes', body:'Mix all channels to <strong>stereo</strong> with per-channel volume control (0–2×), <strong>keep the original</strong> channel layout, or <strong>split to one file per participant</strong> — Reporter, Witness, Attorney 1, Attorney 2. All labels are editable.' },
+  { icon:'chain',    title:'Audio processing chain', body:'Four stacked processors, all optional and ordered correctly: <strong>High-pass filter</strong> at 80 Hz (kills HVAC hum), <strong>loudnorm</strong> targeting −16 LUFS / −1.5 TP, <strong>silence trim</strong> at −50 dB, and configurable <strong>fade in/out</strong>. A live chain strip shows what\'s active.' },
+  { icon:'library',  title:'Auto-filing audio library', body:'Every conversion is automatically filed under a case name — <strong>auto-inferred from the filename</strong> (strips date patterns, normalises underscores), always editable. Case → Session → Participant. Search, play inline, re-export, archive, or delete.' },
+  { icon:'play',     title:'In-app playback with scrub', body:'Play and scrub any converted file directly inside DepoAudio — in both the converter output rows and the library view. No Finder, no Explorer, no external player needed to verify output.' },
+  { icon:'batch',    title:'Batch processing', body:'Drop an entire session at once. FTR Gold saves in 5-minute <code>.trm</code> segments — drop all files together and DepoAudio converts them in order. Per-file status chips show progress, format badge, and duration.' },
+  { icon:'native',   title:'Tauri 2 · Rust backend', body:'No bundled Chromium. Installer is ~10 MB vs ~150 MB for Electron apps. The conversion engine runs native Rust, the UI is a thin React layer over the system WebView. Fast launch, fast conversion.' },
+  { icon:'detect',   title:'Smart format detection', body:'Drop any file and the format is identified instantly — SGMCA, FTR, BWF, etc. Unsupported formats (like AES-encrypted Eclipse files) show an <strong>actionable error</strong> explaining exactly what to do next.' },
+  { icon:'prefs',    title:'Persistent preferences', body:'Output mode, format, sample rate, output folder, channel labels, volume levels, and every processing toggle save automatically. Open tomorrow and your settings are exactly where you left them.' },
+  { icon:'reexport', title:'Re-export from library', body:'Open any saved session in the library, click Re-export, and you\'re back in the converter with the case name pre-filled. Change the format or settings and convert again without hunting for the original file.' },
+];
+
+const compare = [
+  ['Open .sgmca files directly',                   true,  false,     false    ],
+  ['Open .trm / .ftr files',                       true,  false,     false    ],
+  ['Batch convert full sessions',                  true,  false,     'partial'],
+  ['Split channels by participant',                true,  false,     false    ],
+  ['Per-channel volume mixing',                    true,  false,     false    ],
+  ['Auto-detect case name from filename',          true,  false,     false    ],
+  ['Built-in audio library by case',               true,  false,     false    ],
+  ['In-app playback of output files',              true,  false,     'partial'],
+  ['Re-export from library with new settings',     true,  false,     false    ],
+  ['HPF / loudnorm / silence trim',                true,  false,     true     ],
+  ['Free, no subscription',                        true,  false,     true     ],
+  ['Recordings stay on your machine',              true,  'partial', true     ],
+  ['No extra software install beyond the app',     true,  false,     true     ],
+];
+
+const faqs = [
+  { q:'What is an SGMCA file?', a:'An SGMCA file is a proprietary audio format used by Stenograph\'s Case CATalyst software. It is an Ogg Vorbis audio container with a 96-byte proprietary header prepended at the start. DepoAudio scans the first 8 KB of the file, finds and strips that header, then passes the clean Ogg stream to FFmpeg for conversion — no quality loss.' },
+  { q:'How do I convert SGMCA to WAV or MP3?', a:'Download DepoAudio (free, Windows and macOS). Drag your SGMCA file into the window, choose WAV or MP3 from the format selector, and click Convert. Done in a few seconds per hour of audio. No command line, no FFmpeg install — it\'s bundled.' },
+  { q:'Can DepoAudio convert FTR (.trm) files?', a:'Yes. FTR Gold saves recordings as a series of .trm files — typically one per 5-minute segment. Drop all .trm files for a session together into DepoAudio and it converts them in sequence, applying the same output settings to each. FTR uses a non-standard AAC codec tag (0x4180) that DepoAudio handles automatically.' },
+  { q:'What about Eclipse AudioSync (.aes) files?', a:'.aes files are AES-128 encrypted and cannot be decoded without the Eclipse CAT software. To work around this, open Eclipse and export manually: File → Export Audio → WAV. Then drop the exported WAV into DepoAudio if you need to reformat or process it.' },
+  { q:'Does DepoAudio upload my recordings anywhere?', a:'No. DepoAudio makes zero network calls during conversion. The entire pipeline — format detection, header stripping, FFmpeg transcoding, library storage — runs completely locally on your machine. Your client recordings never leave your computer.' },
+  { q:'How does splitting channels by participant work?', a:'Select "Split Channels" as the output mode. DepoAudio uses ffprobe to detect the channel count, then writes one output file per channel named by participant label (Reporter, Witness, Attorney 1, Attorney 2 by default — all editable). Each file also gets filed in the library under its label.' },
+  { q:'Is there a file size or batch limit?', a:'No. DepoAudio processes files sequentially so memory use stays flat regardless of batch size. FFmpeg streams audio data rather than loading it into RAM, so 8+ hour recordings convert without issues.' },
+];
+---
+
+<Layout>
+  <Nav />
+  <main>
+
+    <!-- ══ HERO ══════════════════════════════════════════════════ -->
+    <section class="hero" aria-labelledby="hero-h1">
+      <div class="hero-glow" aria-hidden="true"></div>
+
+      <div class="hero-wave" aria-hidden="true">
+        {[[.22,'1.10s','0.00s',18],[.36,'.95s','.07s',32],[.52,'.85s','.14s',48],[.66,'.75s','.20s',62],[.82,'.70s','.26s',74],[1.0,'.65s','.31s',80],[.86,'.70s','.36s',68],[.70,'.78s','.40s',52],[.52,'.88s','.45s',38],[.36,'.92s','.50s',26],[.60,'.78s','.43s',44],[.76,'.68s','.34s',58],[.90,'.62s','.22s',72],[1.0,'.60s','.10s',80],[.90,'.62s','.18s',72],[.74,'.70s','.28s',56],[.54,'.80s','.38s',38],[.34,'.90s','.46s',22],[.20,'.96s','.52s',14]].map(([op,dur,delay,h]) => (
+          <div class="wbar" style={`--h:${h}px;--op:${op};--dur:${dur};--delay:${delay}`}></div>
+        ))}
+      </div>
+
+      <p class="eyebrow-sm">Free &amp; Open Source · Windows &amp; macOS</p>
+
+      <h1 id="hero-h1">
+        Convert SGMCA, FTR, and BWF court recordings<br/>
+        to <em>any audio format</em> — free, local, forever.
+      </h1>
+
+      <p class="hero-sub">
+        DepoAudio converts proprietary court recording formats — Stenograph <strong>SGMCA</strong>, FTR Gold <strong>.trm</strong>, Broadcast WAV, DigitalCAT — to WAV, MP3, FLAC, or Opus. No subscriptions, no cloud, no command line. Everything runs on your machine.
+      </p>
+
+      <div class="cs-badge">
+        <span class="cs-dot"></span>
+        In development — first release coming soon
+      </div>
+
+      <div class="dl-split" id="heroDlGroup">
+        <a href="https://github.com/mayes/depo-audio/releases/latest" id="heroDlPrimary" class="dl-split__btn coming-soon" aria-disabled="true">
+          <Fragment set:html={DL_SVG} />
+          <span id="heroDlLabel">Coming soon</span>
+        </a>
+        <button class="dl-split__chv coming-soon" id="heroDlChevron" aria-label="Other platforms" aria-expanded="false" aria-haspopup="true">
+          <Fragment set:html={CHV_SVG} />
+        </button>
+        <div class="dl-dd" id="heroDlDropdown" role="menu" aria-hidden="true">
+          <div class="dl-dd__lbl">All platforms</div>
+          <a href="https://github.com/mayes/depo-audio/releases/latest" target="_blank" rel="noopener" class="dl-dd__opt" id="heroMac" role="menuitem"><Fragment set:html={MAC_SVG} />macOS Apple Silicon<span class="dl-dd__sub">.dmg · arm64</span></a>
+          <a href="https://github.com/mayes/depo-audio/releases/latest" target="_blank" rel="noopener" class="dl-dd__opt" id="heroMacIntel" role="menuitem"><Fragment set:html={MAC_SVG} />macOS Intel<span class="dl-dd__sub">.dmg · x86_64</span></a>
+          <a href="https://github.com/mayes/depo-audio/releases/latest" target="_blank" rel="noopener" class="dl-dd__opt" id="heroWin" role="menuitem"><Fragment set:html={WIN_SVG} />Windows<span class="dl-dd__sub">.msi · x64</span></a>
+          <div class="dl-dd__div"></div>
+          <a href="https://github.com/mayes/depo-audio/releases" target="_blank" rel="noopener" class="dl-dd__opt dl-dd__opt--muted" role="menuitem">All releases &amp; changelogs →</a>
+        </div>
+      </div>
+
+      <div class="hero-badges">
+        <span class="badge">macOS 12+ · Apple Silicon &amp; Intel</span>
+        <span class="badge">Windows 10/11 x64</span>
+        <span class="badge">FFmpeg bundled</span>
+        <span class="badge">MIT license · $0 forever</span>
+      </div>
+    </section>
+
+
+    <!-- ══ CONVERTER MOCKUP ══════════════════════════════════════ -->
+    <section class="shot-section" aria-labelledby="shot-h">
+      <div class="container">
+        <div class="shot-intro">
+          <p class="eyebrow">The converter</p>
+          <h2 id="shot-h">Drop files. Pick a format. Done.</h2>
+          <p class="section-sub">Format auto-detected on drop. Processing chain, output mode, and per-channel volume all in one window — no wizard, no hidden screens.</p>
+        </div>
+        <div class="shot-glow-wrap">
+          <ConverterMockup />
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ══ STATS ══════════════════════════════════════════════════ -->
+    <div class="stats-band" aria-label="Key facts">
+      <div class="container">
+        <div class="stats-grid">
+          {[
+            { lbl:'Proprietary formats', val:'5+',           desc:'SGMCA, FTR, BWF, DigitalCAT — including formats with no public specification' },
+            { lbl:'Output formats',      val:'4',            desc:'WAV · MP3 · FLAC · Opus — editing, email, archival, or voice-optimised' },
+            { lbl:'Library hierarchy',   val:'Case → Witness', desc:'Every conversion auto-filed by case and participant — searchable, playable, re-exportable' },
+            { lbl:'Cost',                val:'$0',           desc:'No license fee, no subscription, no account. MIT license. Use it forever.' },
+          ].map(s => (
+            <div class="stat">
+              <div class="stat-lbl">{s.lbl}</div>
+              <div class="stat-val">{s.val}</div>
+              <div class="stat-desc">{s.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ══ FORMAT SUPPORT ═══════════════════════════════════════ -->
+    <section class="section" id="formats" aria-labelledby="fmt-h">
+      <div class="container">
+        <p class="eyebrow">Format support</p>
+        <h2 id="fmt-h">Every format your agency encounters</h2>
+        <p class="section-sub">Eclipse, ProCAT, and StenoCAT already output standard audio — those just work. It's the proprietary containers that cause pain. DepoAudio handles them without opening the CAT software.</p>
+
+        <div class="fmt-table" role="table">
+          <div class="fmt-head" role="row">
+            <span role="columnheader">Extension</span>
+            <span role="columnheader">CAT software / vendor</span>
+            <span class="ta-r" role="columnheader">Channels</span>
+            <span class="ta-r" role="columnheader">Status</span>
+          </div>
+          {formats.map(r => (
+            <div class={`fmt-row fmt-row--${r.status}`} role="row">
+              <span class="fmt-ext" role="cell">{r.ext}</span>
+              <span class="fmt-vendor" role="cell">
+                {r.vendor}
+                {r.note && <span class="fmt-note">{r.note}</span>}
+              </span>
+              <span class="fmt-ch ta-r" role="cell">{r.ch}</span>
+              <span class={`fmt-status ta-r fmt-status--${r.status}`} role="cell">
+                {r.status === 'supported'    && '● Supported'}
+                {r.status === 'experimental' && '◐ Experimental'}
+                {r.status === 'encrypted'    && '✕ Encrypted'}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ══ FEATURES ══════════════════════════════════════════════ -->
+    <section class="section section--alt" id="features" aria-labelledby="feat-h">
+      <div class="container">
+        <p class="eyebrow">Features</p>
+        <h2 id="feat-h">Everything a court reporter actually needs</h2>
+        <p class="section-sub">Not a DAW. Not a subscription platform. A focused tool that handles the audio side of the job.</p>
+        <div class="feat-grid">
+          {features.map(f => (
+            <article class="feat-card">
+              <div class="feat-icon" aria-hidden="true">
+                {f.icon === 'waveform'  && <svg width="24" height="18" viewBox="0 0 24 18" fill="none"><rect x="0" y="8" width="4" height="2" rx="1" fill="var(--gold)" opacity=".4"/><rect x="5" y="4" width="4" height="10" rx="2" fill="var(--gold)" opacity=".65"/><rect x="10" y="0" width="4" height="18" rx="2" fill="var(--gold)"/><rect x="15" y="4" width="4" height="10" rx="2" fill="var(--gold)" opacity=".65"/><rect x="20" y="8" width="4" height="2" rx="1" fill="var(--gold)" opacity=".4"/></svg>}
+                {f.icon === 'chain'     && <svg width="22" height="18" viewBox="0 0 22 18" fill="none"><path d="M2 9h4L9 3l4 12 3-8 2 2h4" stroke="var(--gold)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>}
+                {f.icon === 'library'   && <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="3" width="16" height="14" rx="2" stroke="var(--gold)" stroke-width="1.4"/><path d="M2 8h16M7 3V1M13 3V1" stroke="var(--gold)" stroke-width="1.4" stroke-linecap="round"/><line x1="5" y1="12" x2="10" y2="12" stroke="var(--gold)" stroke-width="1.4" stroke-linecap="round" opacity=".6"/></svg>}
+                {f.icon === 'play'      && <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8.5" stroke="var(--gold)" stroke-width="1.4"/><path d="M8 7.5l5 2.5-5 2.5V7.5z" fill="var(--gold)"/></svg>}
+                {f.icon === 'batch'     && <svg width="22" height="18" viewBox="0 0 22 18" fill="none"><rect x="0" y="4" width="4.5" height="10" rx="2.25" fill="var(--gold)" opacity=".5"/><rect x="6" y="0" width="4.5" height="18" rx="2.25" fill="var(--gold)"/><rect x="13" y="4" width="4.5" height="10" rx="2.25" fill="var(--green)" opacity=".9"/><rect x="19" y="6" width="3" height="6" rx="1.5" fill="var(--green)" opacity=".5"/></svg>}
+                {f.icon === 'native'    && <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2l2.2 6H18l-5 3.6 1.9 6L10 14l-4.9 3.6L7 11.6 2 8h5.8L10 2z" stroke="var(--gold)" stroke-width="1.4" stroke-linejoin="round"/></svg>}
+                {f.icon === 'detect'    && <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8.5" stroke="var(--gold)" stroke-width="1.4"/><path d="M10 5v5l3 2" stroke="var(--gold)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>}
+                {f.icon === 'prefs'     && <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 5h14M3 10h10M3 15h7" stroke="var(--gold)" stroke-width="1.4" stroke-linecap="round"/></svg>}
+                {f.icon === 'reexport'  && <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 12a6 6 0 1 0 .9-3.1" stroke="var(--gold)" stroke-width="1.4" stroke-linecap="round"/><path d="M4 7v5H9" stroke="var(--gold)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>}
+              </div>
+              <h3 class="feat-name">{f.title}</h3>
+              <p class="feat-desc" set:html={f.body}></p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ══ LIBRARY MOCKUP ════════════════════════════════════════ -->
+    <section class="section shot-section" id="library" aria-labelledby="lib-h">
+      <div class="container">
+        <div class="shot-intro">
+          <p class="eyebrow">Audio library</p>
+          <h2 id="lib-h">Every case. Every witness. Always searchable.</h2>
+          <p class="section-sub">No more hunting through folders. Every conversion auto-filed by case name and participant, with inline playback and re-export built in.</p>
+        </div>
+        <div class="shot-glow-wrap">
+          <LibraryMockup />
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ══ OUTPUT FORMATS ════════════════════════════════════════ -->
+    <section class="section section--alt" aria-labelledby="out-h">
+      <div class="container">
+        <p class="eyebrow">Output formats</p>
+        <h2 id="out-h">Right format for every use case</h2>
+        <p class="section-sub">Pick based on what you're doing with the audio — editing, emailing a scopist, long-term archiving, or compressing long depositions.</p>
+        <div class="output-grid">
+          {[
+            { ext:'WAV',  name:'PCM Broadcast WAV',   desc:'Uncompressed 16-bit PCM at 48 kHz. Full fidelity, zero codec artifacts. The standard for any DAW, editor, or transcription service.',                    tag:'Default · Editing',    tc:'green' },
+            { ext:'MP3',  name:'MP3 · 192 kbps CBR',  desc:'What scopists typically request. Roughly 8× smaller than WAV — an hour of deposition audio fits comfortably in an email attachment.',                   tag:'Email · Scopists',     tc:'blue'  },
+            { ext:'FLAC', name:'FLAC Lossless',        desc:'Identical quality to WAV at roughly half the size. Every bit preserved. Recoverable to uncompressed PCM at any time — ideal for permanent archival.',    tag:'Archival · Lossless',  tc:'gold'  },
+            { ext:'OPUS', name:'Opus · 64 kbps VBR',   desc:'Modern codec engineered for voice. Smaller than MP3 at equivalent quality. Ideal for long depositions where storage and email size matter. Locked to 48 kHz.', tag:'Voice · Smallest',  tc:'amber' },
+          ].map(f => (
+            <div class="out-card">
+              <div class="out-ext">.{f.ext}</div>
+              <div class="out-name">{f.name}</div>
+              <p class="out-desc">{f.desc}</p>
+              <span class={`out-tag out-tag--${f.tc}`}>{f.tag}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ══ COMPARISON ════════════════════════════════════════════ -->
+    <section class="section" id="compare" aria-labelledby="cmp-h">
+      <div class="container">
+        <p class="eyebrow">Why DepoAudio</p>
+        <h2 id="cmp-h">The only tool built specifically for this problem</h2>
+        <p class="section-sub">CAT vendors provide proprietary audio formats but no cross-software converter. General audio tools don't understand court recording formats. DepoAudio fills that gap.</p>
+
+        <div class="cmp-wrap" role="table">
+          <div class="cmp-head" role="row">
+            <span role="columnheader">Capability</span>
+            <span class="cmp-c cmp-da" role="columnheader">DepoAudio</span>
+            <span class="cmp-c" role="columnheader">CAT export</span>
+            <span class="cmp-c" role="columnheader">General tools</span>
+          </div>
+          {compare.map(([cap, da, cat, gen]) => (
+            <div class="cmp-row" role="row">
+              <span class="cmp-cap" role="cell">{cap}</span>
+              <span class={`cmp-c cmp-da`} role="cell">
+                {da === true    && <span class="cy">✓</span>}
+                {da === false   && <span class="cn">✕</span>}
+                {da === 'partial' && <span class="cp">◐</span>}
+              </span>
+              <span class="cmp-c" role="cell">
+                {cat === true    && <span class="cy">✓</span>}
+                {cat === false   && <span class="cn">✕</span>}
+                {cat === 'partial' && <span class="cp">◐</span>}
+              </span>
+              <span class="cmp-c" role="cell">
+                {gen === true    && <span class="cy">✓</span>}
+                {gen === false   && <span class="cn">✕</span>}
+                {gen === 'partial' && <span class="cp">◐</span>}
+              </span>
+            </div>
+          ))}
+          <div class="cmp-footer">◐ Partial or requires workaround</div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ══ HOW IT WORKS ══════════════════════════════════════════ -->
+    <section class="section section--alt" aria-labelledby="how-h">
+      <div class="container">
+        <p class="eyebrow">How it works</p>
+        <h2 id="how-h">Four steps. No terminal. No FFmpeg install.</h2>
+        <p class="section-sub">FFmpeg is bundled inside the installer. Nothing else to download or configure.</p>
+        <div class="steps">
+          {[
+            { n:'01', t:'Install',             d:'Run the .msi or .dmg installer. Takes about 30 seconds. FFmpeg is bundled — nothing else to install.' },
+            { n:'02', t:'Drop your recordings',d:'Drag SGMCA, .trm, BWF, or standard audio files into the window. Format is detected instantly on drop.' },
+            { n:'03', t:'Choose your output',  d:'Pick stereo mix, split by participant, or keep original. Choose WAV, MP3, FLAC, or Opus. Toggle processing.' },
+            { n:'04', t:'Convert & browse',    d:'Click Convert. Files land in the Library, organised by case and participant, ready to play or re-export.' },
+          ].map(s => (
+            <div class="step">
+              <div class="step-n">{s.n}</div>
+              <h3 class="step-t">{s.t}</h3>
+              <p class="step-d">{s.d}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ══ OPEN SOURCE ════════════════════════════════════════════ -->
+    <section class="section" aria-labelledby="oss-h">
+      <div class="container">
+        <div class="oss-grid">
+          <div>
+            <p class="eyebrow">Open source</p>
+            <h2 id="oss-h">Auditable, forkable, yours to keep</h2>
+            <p class="oss-p">MIT license. No telemetry. No network calls during conversion. The entire pipeline runs locally — your client recordings never leave your machine.</p>
+            <p class="oss-p">Built on <strong>Tauri 2</strong> + <strong>React</strong> + <strong>FFmpeg</strong>. The Rust backend handles format detection, filter chain construction, and library persistence. GitHub Actions builds signed Windows and macOS installers on every version tag.</p>
+            <a href="https://github.com/mayes/depo-audio" target="_blank" rel="noopener" class="btn-outline">View source on GitHub →</a>
+          </div>
+          <div class="oss-facts">
+            {[
+              { l:'License',        v:'MIT — commercial use, modification, and distribution freely allowed' },
+              { l:'Network',        v:'Zero calls during conversion. Recordings never leave your machine.' },
+              { l:'Stack',          v:'Tauri 2 · Rust · React · FFmpeg bundled per platform' },
+              { l:'Installer size', v:'~10 MB (no Chromium — uses native system WebView)' },
+              { l:'CI/CD',          v:'GitHub Actions — Windows .msi + macOS .dmg on every version tag' },
+              { l:'Persistence',    v:'Prefs and library saved to app data dir. No registry edits on Windows.' },
+            ].map(f => (
+              <div class="oss-fact">
+                <span class="oss-lbl">{f.l}</span>
+                <span class="oss-val">{f.v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ══ FAQ ════════════════════════════════════════════════════ -->
+    <section class="section section--alt" id="faq" aria-labelledby="faq-h">
+      <div class="container faq-container">
+        <div>
+          <p class="eyebrow">FAQ</p>
+          <h2 id="faq-h">Common questions</h2>
+          <p class="section-sub">Still have a question? <a href="https://github.com/mayes/depo-audio/issues" target="_blank" rel="noopener" class="link-gold">Open an issue on GitHub →</a></p>
+        </div>
+        <div class="faq-list">
+          {faqs.map((item, i) => (
+            <details class="faq-item" id={`faq-${i}`}>
+              <summary class="faq-q">
+                <span>{item.q}</span>
+                <svg class="faq-chv" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </summary>
+              <p class="faq-a">{item.a}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ══ CTA ════════════════════════════════════════════════════ -->
+    <section class="cta-section" aria-labelledby="cta-h">
+      <div class="container cta-inner">
+        <div class="cs-badge">
+          <span class="cs-dot"></span>
+          In development — first release coming soon
+        </div>
+        <h2 id="cta-h">Free your recordings from proprietary formats.</h2>
+        <p class="cta-sub">Download the installer, drop your files, get your audio. That's it.</p>
+
+        <div class="dl-split dl-split--lg" id="ctaDlGroup">
+          <a href="https://github.com/mayes/depo-audio/releases/latest" id="ctaDlPrimary" class="dl-split__btn coming-soon" aria-disabled="true">
+            <Fragment set:html={DL_SVG} />
+            <span id="ctaDlLabel">Coming soon</span>
+          </a>
+          <button class="dl-split__chv coming-soon" id="ctaDlChevron" aria-label="Other platforms" aria-expanded="false" aria-haspopup="true">
+            <Fragment set:html={CHV_SVG} />
+          </button>
+          <div class="dl-dd dl-dd--up" id="ctaDlDropdown" role="menu" aria-hidden="true">
+            <div class="dl-dd__lbl">All platforms</div>
+            <a href="https://github.com/mayes/depo-audio/releases/latest" target="_blank" rel="noopener" class="dl-dd__opt" id="ctaMac" role="menuitem"><Fragment set:html={MAC_SVG} />macOS Apple Silicon<span class="dl-dd__sub">.dmg · arm64</span></a>
+            <a href="https://github.com/mayes/depo-audio/releases/latest" target="_blank" rel="noopener" class="dl-dd__opt" id="ctaMacIntel" role="menuitem"><Fragment set:html={MAC_SVG} />macOS Intel<span class="dl-dd__sub">.dmg · x86_64</span></a>
+            <a href="https://github.com/mayes/depo-audio/releases/latest" target="_blank" rel="noopener" class="dl-dd__opt" id="ctaWin" role="menuitem"><Fragment set:html={WIN_SVG} />Windows<span class="dl-dd__sub">.msi · x64</span></a>
+            <div class="dl-dd__div"></div>
+            <a href="https://github.com/mayes/depo-audio/releases" target="_blank" rel="noopener" class="dl-dd__opt dl-dd__opt--muted" role="menuitem">All releases &amp; changelogs →</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ══ FOOTER ═══════════════════════════════════════════════════ -->
+  <footer>
+    <div class="container footer-inner">
+      <div>
+        <div class="footer-brand">DepoAudio</div>
+        <p class="footer-by">
+          Built by <a href="https://andrewmayes.com" target="_blank" rel="noopener">Andrew Mayes</a> at
+          <a href="https://executivereportingservice.com" target="_blank" rel="noopener">Executive Reporting Service</a>
+          — a Florida court reporting firm serving attorneys since 1981.
+        </p>
+      </div>
+      <nav class="footer-links" aria-label="Footer">
+        <a href="#formats">Formats</a>
+        <a href="#features">Features</a>
+        <a href="#compare">Compare</a>
+        <a href="#faq">FAQ</a>
+        <a href="https://github.com/mayes/depo-audio" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://executivereportingservice.com" target="_blank" rel="noopener">ERS</a>
+      </nav>
+    </div>
+  </footer>
+</Layout>
+
+<style>
+/* ── Hero ────────────────────────────────────────────────── */
+.hero {
+  min-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 80px 32px 60px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-glow {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  width: 800px; height: 500px;
+  background: radial-gradient(ellipse, rgba(196,154,54,.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero > * { position: relative; z-index: 1; }
+
+/* Animated wave */
+.hero-wave { display: flex; align-items: center; gap: 5px; height: 80px; margin-bottom: 32px; }
+.wbar { width: 5px; border-radius: 3px; background: var(--gold); opacity: var(--op); animation: wa var(--dur) ease-in-out var(--delay) infinite alternate; }
+@keyframes wa { from { height: calc(var(--h) * .22); } to { height: var(--h); } }
+
+/* Hero text */
+.eyebrow-sm { font-family: var(--mono); font-size: 11px; color: var(--gold); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px; }
+.hero h1 { font-family: var(--serif); font-size: clamp(32px, 5.2vw, 64px); font-weight: 600; line-height: 1.1; color: var(--text); max-width: 840px; margin: 0 auto 20px; }
+.hero h1 em { color: var(--gold-hi); font-style: italic; }
+.hero-sub { font-size: clamp(15px, 1.8vw, 18px); color: var(--text2); max-width: 620px; margin: 0 auto 28px; line-height: 1.7; }
+.hero-sub strong { color: var(--text); }
+
+/* Coming-soon badge */
+.cs-badge { display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 11px; color: var(--amber); background: rgba(196,136,32,.1); border: 1px solid rgba(196,136,32,.25); padding: 5px 14px; border-radius: 20px; margin-bottom: 24px; }
+.cs-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.75)} }
+
+/* Platform badges */
+.hero-badges { display: flex; align-items: center; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+.badge { font-family: var(--mono); font-size: 11px; padding: 4px 10px; border-radius: 5px; border: 1px solid var(--border); color: var(--sub); }
+
+/* ── Download split button ────────────────────────────────── */
+.dl-split { position: relative; display: inline-flex; align-items: stretch; height: 40px; }
+.dl-split--lg { height: 48px; }
+
+.dl-split__btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 0 18px;
+  background: var(--gold); color: #0b0f16;
+  font-size: 13px; font-weight: 700;
+  border-radius: 8px 0 0 8px;
+  text-decoration: none; white-space: nowrap;
+  border-right: 1px solid rgba(0,0,0,.2);
+  box-shadow: 0 4px 20px var(--gold-glow);
+  transition: background .14s, box-shadow .14s;
+}
+.dl-split--lg .dl-split__btn { font-size: 15px; padding: 0 22px; border-radius: 9px 0 0 9px; }
+.dl-split__btn:not(.coming-soon):hover { background: var(--gold-hi); box-shadow: 0 4px 32px var(--gold-glow); }
+.dl-split__btn.coming-soon { background: var(--panel2); color: var(--sub); border-color: var(--border); box-shadow: none; cursor: default; }
+
+.dl-split__chv {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; background: var(--gold); color: #0b0f16;
+  border: none; border-radius: 0 8px 8px 0; cursor: pointer;
+  box-shadow: 0 4px 20px var(--gold-glow);
+  transition: background .14s; flex-shrink: 0;
+}
+.dl-split--lg .dl-split__chv { width: 38px; border-radius: 0 9px 9px 0; }
+.dl-split__chv:not(.coming-soon):hover { background: var(--gold-hi); }
+.dl-split__chv.coming-soon { background: var(--panel2); color: var(--sub); border: 1px solid var(--border); border-left: none; box-shadow: none; cursor: default; }
+.dl-split__chv svg { transition: transform .15s; }
+.dl-split__chv[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+/* Dropdown */
+.dl-dd {
+  position: absolute; top: calc(100% + 6px); left: 0;
+  min-width: 250px; background: var(--panel);
+  border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 10px 36px rgba(0,0,0,.45);
+  padding: 6px; opacity: 0; pointer-events: none;
+  transform: translateY(-8px); transition: opacity .14s, transform .14s; z-index: 400;
+}
+.dl-dd--up { top: auto; bottom: calc(100% + 8px); box-shadow: 0 -10px 36px rgba(0,0,0,.45); transform: translateY(8px); }
+.dl-dd[aria-hidden="false"] { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.dl-dd--up[aria-hidden="false"] { transform: translateY(0); }
+.dl-dd__lbl { font-family: var(--mono); font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--sub); padding: 4px 10px 6px; }
+.dl-dd__opt { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; font-size: 13px; color: var(--text); text-decoration: none; transition: background .1s; }
+.dl-dd__opt:hover { background: var(--panel2); }
+.dl-dd__opt--muted { color: var(--sub); font-size: 12px; }
+.dl-dd__opt--detected { background: var(--gold-dim); color: var(--gold-hi); }
+.dl-dd__opt--detected .dl-dd__sub { color: var(--gold); }
+.dl-dd__sub { margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--sub); white-space: nowrap; }
+.dl-dd__div { height: 1px; background: var(--border); margin: 4px 6px; }
+
+/* ── Screenshot sections ─────────────────────────────────── */
+.shot-section { padding: 70px 0; }
+.shot-intro { max-width: 560px; margin-bottom: 40px; }
+.shot-intro h2 { font-family: var(--serif); font-size: clamp(26px, 3.5vw, 42px); font-weight: 600; color: var(--text); margin-bottom: 12px; }
+.shot-glow-wrap { border-radius: 12px; box-shadow: 0 0 0 1px var(--border), 0 24px 80px rgba(0,0,0,.5), 0 0 60px rgba(196,154,54,.06); overflow: hidden; }
+
+/* ── Stats band ──────────────────────────────────────────── */
+.stats-band { background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 48px 0; }
+.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.stat { background: var(--panel); padding: 24px 20px; }
+.stat-lbl { font-family: var(--mono); font-size: 10px; color: var(--sub); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+.stat-val { font-family: var(--serif); font-size: 24px; font-weight: 600; color: var(--gold-hi); margin-bottom: 6px; line-height: 1.1; }
+.stat-desc { font-size: 12px; color: var(--text2); line-height: 1.45; }
+
+/* ── Shared section scaffold ─────────────────────────────── */
+.section { padding: 80px 0; }
+.section--alt { background: var(--surface); }
+.eyebrow { font-family: var(--mono); font-size: 11px; color: var(--gold); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
+.section h2, .section-title { font-family: var(--serif); font-size: clamp(26px, 3.8vw, 44px); font-weight: 600; color: var(--text); margin-bottom: 14px; line-height: 1.15; }
+.section-sub { font-size: 16px; color: var(--text2); max-width: 580px; line-height: 1.65; margin-bottom: 44px; }
+.ta-r { text-align: right; }
+
+/* ── Format table ────────────────────────────────────────── */
+.fmt-table { border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.fmt-head, .fmt-row { display: grid; grid-template-columns: 175px 1fr 65px 140px; gap: 14px; align-items: start; padding: 10px 20px; }
+.fmt-head { background: var(--panel2); font-family: var(--mono); font-size: 10px; color: var(--sub); letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+.fmt-row { background: var(--panel); border-bottom: 1px solid var(--border2); transition: background .1s; }
+.fmt-row:last-child { border-bottom: none; }
+.fmt-row:hover { background: var(--panel2); }
+.fmt-ext { font-family: var(--mono); font-size: 12px; color: var(--text); padding-top: 1px; }
+.fmt-vendor { font-size: 12px; color: var(--text2); }
+.fmt-note { display: block; font-size: 11px; color: var(--sub); margin-top: 3px; line-height: 1.4; }
+.fmt-ch { font-family: var(--mono); font-size: 11px; color: var(--sub); padding-top: 2px; }
+.fmt-status { font-family: var(--mono); font-size: 11px; font-weight: 600; padding-top: 2px; }
+.fmt-status--supported { color: var(--green); }
+.fmt-status--experimental { color: var(--amber); }
+.fmt-status--encrypted { color: var(--red); }
+
+/* ── Feature grid ────────────────────────────────────────── */
+.feat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+.feat-card { background: var(--panel); border: 1px solid var(--border2); border-radius: var(--r); padding: 26px 22px; transition: border-color .15s, background .15s; }
+.feat-card:hover { border-color: var(--border); background: var(--panel2); }
+.feat-icon { width: 42px; height: 42px; border-radius: 10px; background: var(--gold-dim); display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+.feat-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 7px; }
+.feat-desc { font-size: 13px; color: var(--text2); line-height: 1.6; }
+.feat-desc strong { color: var(--text); }
+.feat-desc code { font-family: var(--mono); font-size: 11px; background: var(--panel2); padding: 1px 5px; border-radius: 3px; color: var(--text2); }
+
+/* ── Output format cards ─────────────────────────────────── */
+.output-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+.out-card { background: var(--panel); border: 1px solid var(--border2); border-radius: var(--r); padding: 22px; transition: border-color .15s; }
+.out-card:hover { border-color: var(--gold-dim); }
+.out-ext { font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--gold-hi); margin-bottom: 6px; }
+.out-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.out-desc { font-size: 12px; color: var(--text2); line-height: 1.55; margin-bottom: 14px; }
+.out-tag { display: inline-block; font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 20px; }
+.out-tag--green { background: rgba(58,158,106,.12); color: var(--green); }
+.out-tag--blue  { background: rgba(74,141,224,.12); color: var(--blue); }
+.out-tag--gold  { background: rgba(196,154,54,.12); color: var(--gold); }
+.out-tag--amber { background: rgba(196,136,32,.12); color: var(--amber); }
+
+/* ── Comparison table ────────────────────────────────────── */
+.cmp-wrap { border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.cmp-head, .cmp-row { display: grid; grid-template-columns: 1fr 130px 130px 130px; align-items: center; padding: 10px 20px; }
+.cmp-head { background: var(--panel2); font-family: var(--mono); font-size: 10px; color: var(--sub); letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); gap: 8px; }
+.cmp-row { background: var(--panel); border-bottom: 1px solid var(--border2); gap: 8px; }
+.cmp-row:last-child { border-bottom: none; }
+.cmp-row:hover { background: var(--panel2); }
+.cmp-cap { font-size: 13px; color: var(--text2); }
+.cmp-c { text-align: center; font-size: 16px; }
+.cmp-da { background: rgba(196,154,54,.04); }
+.cy { color: var(--green); }
+.cn { color: var(--red); opacity: .7; }
+.cp { color: var(--amber); }
+.cmp-footer { background: var(--panel2); padding: 8px 20px; font-family: var(--mono); font-size: 10px; color: var(--sub); border-top: 1px solid var(--border); }
+
+/* ── Steps ───────────────────────────────────────────────── */
+.steps { display: grid; grid-template-columns: repeat(4,1fr); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.step { padding: 28px 22px; background: var(--panel); border-right: 1px solid var(--border); }
+.step:last-child { border-right: none; }
+.step-n { font-family: var(--mono); font-size: 11px; color: var(--gold); letter-spacing: 1px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.step-n::after { content: ''; flex: 1; height: 1px; background: var(--gold-dim); }
+.step-t { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 7px; }
+.step-d { font-size: 12px; color: var(--text2); line-height: 1.55; }
+
+/* ── Open source ─────────────────────────────────────────── */
+.oss-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; }
+.oss-p { font-size: 15px; color: var(--text2); line-height: 1.65; margin-bottom: 14px; }
+.oss-p strong { color: var(--text); }
+.btn-outline { display: inline-flex; align-items: center; padding: 10px 20px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--text2); text-decoration: none; margin-top: 8px; transition: border-color .14s, color .14s; }
+.btn-outline:hover { border-color: var(--text2); color: var(--text); }
+.oss-facts { border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.oss-fact { display: grid; grid-template-columns: 110px 1fr; gap: 14px; align-items: baseline; padding: 12px 18px; border-bottom: 1px solid var(--border2); background: var(--panel); transition: background .1s; }
+.oss-fact:last-child { border-bottom: none; }
+.oss-fact:hover { background: var(--panel2); }
+.oss-lbl { font-family: var(--mono); font-size: 10px; color: var(--sub); text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; }
+.oss-val { font-size: 13px; color: var(--text2); line-height: 1.5; }
+
+/* ── FAQ ─────────────────────────────────────────────────── */
+.faq-container { display: grid; grid-template-columns: 260px 1fr; gap: 56px; align-items: start; }
+.faq-container .section-sub { margin-bottom: 0; }
+.link-gold { color: var(--gold); text-decoration: none; }
+.link-gold:hover { color: var(--gold-hi); text-decoration: underline; }
+.faq-list { display: flex; flex-direction: column; gap: 4px; }
+.faq-item { border: 1px solid var(--border2); border-radius: 8px; background: var(--panel); overflow: hidden; transition: border-color .15s; }
+.faq-item[open] { border-color: var(--border); }
+.faq-item[open] .faq-chv { transform: rotate(180deg); }
+.faq-q { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; cursor: pointer; list-style: none; font-size: 14px; font-weight: 600; color: var(--text); user-select: none; }
+.faq-q::-webkit-details-marker { display: none; }
+.faq-q:hover { color: var(--text); background: var(--panel2); }
+.faq-chv { flex-shrink: 0; color: var(--sub); transition: transform .2s; }
+.faq-a { padding: 0 18px 16px; font-size: 13px; color: var(--text2); line-height: 1.65; border-top: 1px solid var(--border2); padding-top: 12px; }
+
+/* ── CTA ─────────────────────────────────────────────────── */
+.cta-section { padding: 100px 0; background: radial-gradient(ellipse 800px 400px at 50% 50%, rgba(196,154,54,.06) 0%, transparent 70%), var(--bg); text-align: center; }
+.cta-inner { display: flex; flex-direction: column; align-items: center; gap: 0; }
+.cta-section h2 { font-family: var(--serif); font-size: clamp(28px, 4vw, 48px); font-weight: 600; color: var(--text); max-width: 620px; line-height: 1.12; margin-bottom: 12px; }
+.cta-sub { font-size: 16px; color: var(--text2); margin-bottom: 32px; }
+
+/* ── Footer ──────────────────────────────────────────────── */
+footer { background: var(--surface); border-top: 1px solid var(--border); padding: 28px 0; }
+.footer-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; }
+.footer-brand { font-family: var(--serif); font-size: 17px; color: var(--gold-hi); margin-bottom: 4px; }
+.footer-by { font-size: 12px; color: var(--sub); }
+.footer-by a { color: var(--text2); text-decoration: none; transition: color .14s; }
+.footer-by a:hover { color: var(--gold); }
+.footer-links { display: flex; gap: 20px; }
+.footer-links a { font-size: 12px; color: var(--sub); text-decoration: none; transition: color .14s; }
+.footer-links a:hover { color: var(--text2); }
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 960px) {
+  .feat-grid          { grid-template-columns: 1fr 1fr; }
+  .steps              { grid-template-columns: 1fr 1fr; }
+  .step               { border-right: none; border-bottom: 1px solid var(--border); }
+  .step:last-child    { border-bottom: none; }
+  .oss-grid           { grid-template-columns: 1fr; gap: 36px; }
+  .stats-grid         { grid-template-columns: 1fr 1fr; }
+  .output-grid        { grid-template-columns: 1fr 1fr; }
+  .cmp-head, .cmp-row { grid-template-columns: 1fr 100px 100px 100px; }
+  .faq-container      { grid-template-columns: 1fr; gap: 28px; }
+}
+@media (max-width: 700px) {
+  .fmt-head,.fmt-row  { grid-template-columns: 150px 1fr 110px; }
+  .fmt-ch             { display: none; }
+  .cmp-head,.cmp-row  { grid-template-columns: 1fr 80px 80px 80px; font-size: 12px; }
+}
+@media (max-width: 560px) {
+  .hero               { padding: 60px 20px 48px; }
+  .feat-grid,.output-grid { grid-template-columns: 1fr; }
+  .steps              { grid-template-columns: 1fr; }
+  .stats-grid         { grid-template-columns: 1fr; }
+  .cmp-head,.cmp-row  { grid-template-columns: 1fr 60px 60px 60px; font-size: 11px; padding: 8px 12px; }
+  .fmt-head,.fmt-row  { grid-template-columns: 1fr 1fr; }
+  .ta-r               { display: none; }
+  .footer-inner       { flex-direction: column; align-items: flex-start; }
+  .footer-links       { flex-wrap: wrap; gap: 12px; }
+}
+</style>
+
+<script>
+// ── Shared dropdown factory ───────────────────────────────────
+function makeDropdown(groupId: string, chevronId: string, dropdownId: string) {
+  const group   = document.getElementById(groupId);
+  const chevron = document.getElementById(chevronId);
+  const dd      = document.getElementById(dropdownId);
+  if (!chevron || !dd) return;
+
+  function open()  { dd.setAttribute('aria-hidden','false'); chevron.setAttribute('aria-expanded','true'); }
+  function close() { dd.setAttribute('aria-hidden','true');  chevron.setAttribute('aria-expanded','false'); }
+  function toggle(e: Event) { e.stopPropagation(); dd.getAttribute('aria-hidden') === 'false' ? close() : open(); }
+
+  chevron.addEventListener('click', toggle);
+  document.addEventListener('click', (e) => { if (!group?.contains(e.target as Node)) close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+}
+
+makeDropdown('heroDlGroup', 'heroDlChevron', 'heroDlDropdown');
+makeDropdown('ctaDlGroup',  'ctaDlChevron',  'ctaDlDropdown');
+
+// ── Platform detection ────────────────────────────────────────
+// Set to false on first real release
+const COMING_SOON = true;
+
+type Platform = 'mac-arm' | 'mac-intel' | 'windows' | 'other';
+
+function detectPlatform(): Platform {
+  const ua = navigator.userAgent;
+  if (/Win/.test(ua)) return 'windows';
+  if (/Mac/.test(ua) && !/iPhone|iPad/.test(ua)) return 'mac-arm'; // refined below
+  return 'other';
+}
+
+const LABELS: Record<Platform, string> = {
+  'mac-arm':   'Download for Mac',
+  'mac-intel': 'Download for Mac',
+  'windows':   'Download for Windows',
+  'other':     'Download',
+};
+
+function applyPlatform(p: Platform, prefix: 'hero' | 'cta') {
+  if (COMING_SOON) return;
+
+  const primary = document.getElementById(`${prefix}DlPrimary`);
+  const label   = document.getElementById(`${prefix}DlLabel`);
+  const chevron = document.getElementById(`${prefix}DlChevron`);
+  const mac     = document.getElementById(`${prefix === 'hero' ? 'hero' : 'cta'}Mac`);
+  const macI    = document.getElementById(`${prefix === 'hero' ? 'hero' : 'cta'}MacIntel`);
+  const win     = document.getElementById(`${prefix === 'hero' ? 'hero' : 'cta'}Win`);
+
+  if (label)   label.textContent = LABELS[p];
+  primary?.classList.remove('coming-soon');
+  chevron?.classList.remove('coming-soon');
+
+  [mac, macI, win].forEach(el => el?.classList.remove('dl-dd__opt--detected'));
+  if (p === 'mac-arm')   mac?.classList.add('dl-dd__opt--detected');
+  if (p === 'mac-intel') macI?.classList.add('dl-dd__opt--detected');
+  if (p === 'windows')   win?.classList.add('dl-dd__opt--detected');
+}
+
+const platform = detectPlatform();
+(['hero', 'cta'] as const).forEach(prefix => applyPlatform(platform, prefix));
+
+// Async Intel/ARM refinement for Chrome/Edge
+const uad = (navigator as any).userAgentData;
+if (uad?.getHighEntropyValues) {
+  uad.getHighEntropyValues(['architecture']).then((d: any) => {
+    const refined: Platform = d.architecture === 'arm' ? 'mac-arm' : 'mac-intel';
+    (['hero', 'cta'] as const).forEach(p => applyPlatform(refined, p));
+  }).catch(() => {});
+}
+</script>

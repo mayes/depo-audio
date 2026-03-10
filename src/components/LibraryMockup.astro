@@ -1,0 +1,117 @@
+---
+// LibraryMockup.astro
+---
+<div class="mockup-wrap" aria-hidden="true" role="img" aria-label="DepoAudio library interface showing cases organized by name with participants and playback controls">
+  <svg viewBox="0 0 760 430" fill="none" xmlns="http://www.w3.org/2000/svg" class="mockup-svg">
+    <!-- frame -->
+    <rect width="760" height="430" rx="10" fill="#111820"/>
+    <rect x=".5" y=".5" width="759" height="429" rx="9.5" stroke="#243044"/>
+
+    <!-- Topbar -->
+    <rect width="760" height="50" rx="10" fill="#161e2a"/>
+    <rect y="10" width="760" height="40" fill="#161e2a"/>
+    <rect y="49" width="760" height="1" fill="#243044"/>
+    <circle cx="24" cy="25" r="10" stroke="rgba(196,154,54,.3)" stroke-width="1"/>
+    <rect x="25" y="19" width="2.5" height="13" rx="1.25" fill="#c49a36"/>
+    <rect x="22" y="23" width="2" height="9" rx="1" fill="rgba(196,154,54,.68)"/>
+    <rect x="28.5" y="23" width="2" height="9" rx="1" fill="rgba(196,154,54,.68)"/>
+    <text x="40" y="29" font-family="Georgia,serif" font-size="13" font-weight="600" fill="#d4aa4a">DepoAudio</text>
+    <rect x="310" y="12" width="140" height="27" rx="7" fill="#1c2738" stroke="#243044" stroke-width="1"/>
+    <text x="345" y="30" font-family="sans-serif" font-size="11" font-weight="600" fill="#5a7090" text-anchor="middle">Convert</text>
+    <rect x="377" y="15" width="70" height="21" rx="5" fill="rgba(196,154,54,.14)"/>
+    <text x="412" y="30" font-family="sans-serif" font-size="11" font-weight="600" fill="#c49a36" text-anchor="middle">Library</text>
+    <!-- badge -->
+    <rect x="444" y="16" width="16" height="14" rx="7" fill="#c49a36"/>
+    <text x="452" y="27" font-family="monospace" font-size="9" fill="#0b0f16" text-anchor="middle" font-weight="700">4</text>
+    <rect x="710" y="11" width="28" height="28" rx="6" fill="#1c2738" stroke="#243044" stroke-width="1"/>
+    <text x="724" y="29" font-family="sans-serif" font-size="13" fill="#8fa5c2" text-anchor="middle">☾</text>
+
+    <!-- Toolbar -->
+    <rect y="50" width="760" height="46" fill="#111820"/>
+    <rect y="95" width="760" height="1" fill="#243044"/>
+    <!-- search box -->
+    <rect x="20" y="60" width="320" height="28" rx="7" fill="#161e2a" stroke="#243044" stroke-width="1"/>
+    <text x="40" y="77" font-family="sans-serif" font-size="11" fill="#5a7090">Search cases, participants…</text>
+    <!-- search icon -->
+    <circle cx="31" cy="74" r="5" stroke="#5a7090" stroke-width="1.2"/>
+    <line x1="35" y1="78" x2="38" y2="81" stroke="#5a7090" stroke-width="1.2" stroke-linecap="round"/>
+    <!-- show archived btn -->
+    <rect x="350" y="60" width="100" height="28" rx="6" fill="none"/>
+    <text x="400" y="77" font-family="sans-serif" font-size="11" fill="#5a7090" text-anchor="middle">Show archived</text>
+
+    <!-- ── CASE LIST ── -->
+    <!-- Case 1 — open/expanded -->
+    <rect x="20" y="105" width="720" height="44" rx="8" fill="#161e2a" stroke="#243044" stroke-width="1"/>
+    <text x="36" y="125" font-family="sans-serif" font-size="11" fill="#5a7090">▾</text>
+    <text x="52" y="125" font-family="Georgia,serif" font-size="15" font-weight="600" fill="#dde5f2">Smith v. Metro Transit</text>
+    <text x="52" y="138" font-family="sans-serif" font-size="10" fill="#5a7090">3 sessions · Created Nov 14, 2025</text>
+    <!-- actions -->
+    <text x="655" y="128" font-family="sans-serif" font-size="12" fill="#5a7090">✎</text>
+    <text x="672" y="128" font-family="sans-serif" font-size="12" fill="#5a7090">⊙</text>
+    <text x="690" y="128" font-family="sans-serif" font-size="12" fill="#5a7090">✕</text>
+
+    <!-- Session row under case 1 -->
+    <rect x="20" y="149" width="720" height="130" rx="0" fill="#161e2a" stroke="#1a2535" stroke-width="1"/>
+    <rect x="20" y="148" width="720" height="1" fill="#1a2535"/>
+
+    <!-- session header -->
+    <rect x="48" y="157" width="56" height="16" rx="3" fill="rgba(196,154,54,.1)"/>
+    <text x="76" y="168" font-family="monospace" font-size="10" fill="#c49a36" text-anchor="middle">2025-11-14</text>
+    <text x="112" y="168" font-family="sans-serif" font-size="10" fill="#5a7090">Smith_MetroTransit_11-14-2025.sgmca</text>
+    <text x="618" y="168" font-family="sans-serif" font-size="10" fill="#5a7090">⟳ Re-export</text>
+    <text x="685" y="168" font-family="sans-serif" font-size="10" fill="#5a7090">✕</text>
+
+    <!-- 4 participant rows -->
+    {[
+      { y: 180, color: '#c49a36', label: 'Reporter',   ext: 'WAV', fname: 'Smith_MetroTransit_Reporter.wav',   size: '142 MB' },
+      { y: 200, color: '#4a8fdf', label: 'Witness',    ext: 'WAV', fname: 'Smith_MetroTransit_Witness.wav',    size: '138 MB' },
+      { y: 220, color: '#3a9e6a', label: 'Attorney 1', ext: 'MP3', fname: 'Smith_MetroTransit_Attorney1.mp3',  size: '18.2 MB' },
+      { y: 240, color: '#c94e4e', label: 'Attorney 2', ext: 'MP3', fname: 'Smith_MetroTransit_Attorney2.mp3',  size: '17.9 MB' },
+    ].map(p => `
+      <circle cx="60" cy="${p.y + 7}" r="4" fill="${p.color}"/>
+      <text x="72" y="${p.y + 11}" font-family="sans-serif" font-size="10" font-weight="600" fill="#8fa5c2">${p.label}</text>
+      <rect x="140" y="${p.y}" width="36" height="14" rx="3" fill="rgba(196,154,54,.08)"/>
+      <text x="158" y="${p.y + 10}" font-family="monospace" font-size="9" font-weight="700" fill="${p.ext === 'WAV' ? '#3a9e6a' : '#4e8de0'}" text-anchor="middle">${p.ext}</text>
+      <text x="182" y="${p.y + 10}" font-family="sans-serif" font-size="10" fill="#5a7090">${p.fname}</text>
+      <text x="545" y="${p.y + 10}" font-family="monospace" font-size="9" fill="#5a7090">${p.size}</text>
+      <circle cx="575" cy="${p.y + 7}" r="10" fill="rgba(196,154,54,.1)" stroke="rgba(196,154,54,.2)" stroke-width="1"/>
+      <path d="M572 ${p.y + 4} l7 3-7 3z" fill="#c49a36"/>
+      <rect x="590" y="${p.y + 3}" width="60" height="8" rx="4" fill="#243044"/>
+      <rect x="590" y="${p.y + 3}" width="28" height="8" rx="4" fill="#c49a36" opacity=".7"/>
+    `).join('')}
+
+    <!-- Case 2 — collapsed -->
+    <rect x="20" y="289" width="720" height="36" rx="8" fill="#161e2a" stroke="#243044" stroke-width="1"/>
+    <text x="36" y="311" font-family="sans-serif" font-size="11" fill="#5a7090">▸</text>
+    <text x="52" y="311" font-family="Georgia,serif" font-size="14" font-weight="600" fill="#dde5f2">Nguyen EUO</text>
+    <text x="52" y="320" font-family="sans-serif" font-size="10" fill="#5a7090">1 session · Created Nov 8, 2025</text>
+    <text x="655" y="309" font-family="sans-serif" font-size="12" fill="#5a7090">✎</text>
+    <text x="672" y="309" font-family="sans-serif" font-size="12" fill="#5a7090">⊙</text>
+    <text x="690" y="309" font-family="sans-serif" font-size="12" fill="#5a7090">✕</text>
+
+    <!-- Case 3 — collapsed -->
+    <rect x="20" y="335" width="720" height="36" rx="8" fill="#161e2a" stroke="#243044" stroke-width="1"/>
+    <text x="36" y="357" font-family="sans-serif" font-size="11" fill="#5a7090">▸</text>
+    <text x="52" y="357" font-family="Georgia,serif" font-size="14" font-weight="600" fill="#dde5f2">Deering v. Hartford Insurance</text>
+    <text x="52" y="366" font-family="sans-serif" font-size="10" fill="#5a7090">2 sessions · Created Oct 28, 2025</text>
+    <text x="655" y="355" font-family="sans-serif" font-size="12" fill="#5a7090">✎</text>
+    <text x="672" y="355" font-family="sans-serif" font-size="12" fill="#5a7090">⊙</text>
+    <text x="690" y="355" font-family="sans-serif" font-size="12" fill="#5a7090">✕</text>
+
+    <!-- Case 4 — archived faded -->
+    <rect x="20" y="381" width="720" height="34" rx="8" fill="#161e2a" stroke="#243044" stroke-width="1" opacity=".55"/>
+    <text x="36" y="402" font-family="sans-serif" font-size="11" fill="#5a7090" opacity=".6">▸</text>
+    <text x="52" y="402" font-family="Georgia,serif" font-size="13" font-weight="600" fill="#8fa5c2" opacity=".6">Rivera IME</text>
+    <rect x="145" y="391" width="52" height="14" rx="3" fill="rgba(196,136,32,.1)" opacity=".7"/>
+    <text x="171" y="401" font-family="monospace" font-size="9" fill="#c48820" text-anchor="middle" opacity=".7">archived</text>
+  </svg>
+</div>
+
+<style>
+  .mockup-wrap {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(36,48,68,.8);
+  }
+  .mockup-svg { display: block; width: 100%; height: auto; }
+</style>
