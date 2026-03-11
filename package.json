@@ -1,13 +1,24 @@
 {
-  "name": "depo-audio-site",
+  "name": "depo-audio",
+  "private": true,
+  "version": "0.1.0",
   "type": "module",
-  "version": "1.0.0",
   "scripts": {
-    "dev":     "astro dev",
-    "build":   "astro build",
-    "preview": "astro preview"
+    "dev":   "vite",
+    "build": "vite build",
+    "tauri": "tauri"
   },
   "dependencies": {
-    "astro": "^4.16.0"
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2",
+    "@tauri-apps/plugin-fs": "^2",
+    "@tauri-apps/plugin-shell": "^2",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@vitejs/plugin-react": "^4",
+    "vite": "^5"
   }
 }
