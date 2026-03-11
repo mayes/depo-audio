@@ -783,7 +783,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_drag_drop::init())
+        // drag-drop enabled via tauri crate "drag-drop" feature + dragDropEnabled: true in tauri.conf.json
         .plugin(tauri_plugin_opener::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![

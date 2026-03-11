@@ -20,7 +20,7 @@ jobs:
           - platform: macos-latest   # Apple Silicon (arm64)
             args: '--target aarch64-apple-darwin'
             rust-target: aarch64-apple-darwin
-          - platform: macos-13       # Intel Mac (x86_64) — native x86_64 runner
+          - platform: macos-latest   # Intel Mac (x86_64) — cross-compile on arm64 runner
             args: '--target x86_64-apple-darwin'
             rust-target: x86_64-apple-darwin
           - platform: windows-latest # Windows x64
@@ -54,9 +54,10 @@ jobs:
       # ── Place FFmpeg sidecars ──────────────────────────────────────────────
       # Tauri sidecar convention: binaries/ffmpeg-<target-triple>[.exe]
       #
-      # macOS arm64:   static build from evermeet.cx (native arm64 binary)
-      # macOS x86_64:  x86_64 Homebrew via Rosetta 2 (arch -x86_64)
-      #                /usr/local is the x86_64 Homebrew prefix on arm64 runners
+      # macOS arm64:   static build from evermeet.cx (arm64 binary, arm64 runner)
+      # macOS x86_64:  brew fetch --bottle-tag=sonoma downloads the pre-compiled x86_64
+      #                Homebrew bottle (sonoma = macOS 14 x86_64) without installing anything.
+      #                Works on arm64 runners — no Rosetta or x86_64 Homebrew required.
       # Windows x64:   static GPL build from BtbN/FFmpeg-Builds
 
       - name: Download FFmpeg (macOS arm64)
@@ -74,9 +75,15 @@ jobs:
       - name: Download FFmpeg (macOS x86_64)
         if: matrix.rust-target == 'x86_64-apple-darwin'
         run: |
-          brew install ffmpeg
-          cp "$(brew --prefix)/bin/ffmpeg"  src-tauri/binaries/ffmpeg-x86_64-apple-darwin
-          cp "$(brew --prefix)/bin/ffprobe" src-tauri/binaries/ffprobe-x86_64-apple-darwin
+          # Fetch x86_64 Homebrew bottle (sonoma tag = macOS 14 x86_64 build)
+          brew fetch --bottle-tag=sonoma ffmpeg
+          BOTTLE=$(brew --cache --bottle-tag=sonoma ffmpeg)
+          mkdir -p /tmp/ffmpeg-x64
+          tar -xzf "$BOTTLE" -C /tmp/ffmpeg-x64
+          cp $(find /tmp/ffmpeg-x64 -type f -name "ffmpeg"  | head -1) \
+             src-tauri/binaries/ffmpeg-x86_64-apple-darwin
+          cp $(find /tmp/ffmpeg-x64 -type f -name "ffprobe" | head -1) \
+             src-tauri/binaries/ffprobe-x86_64-apple-darwin
           chmod +x src-tauri/binaries/ffmpeg-x86_64-apple-darwin \
                    src-tauri/binaries/ffprobe-x86_64-apple-darwin
 
