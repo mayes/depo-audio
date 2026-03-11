@@ -14,15 +14,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-latest       # Apple Silicon
+          - platform: macos-latest   # Apple Silicon (arm64)
             args: '--target aarch64-apple-darwin'
             rust-target: aarch64-apple-darwin
-          - platform: macos-13           # Intel Mac
+          - platform: macos-13       # Intel Mac (x86_64)
             args: '--target x86_64-apple-darwin'
             rust-target: x86_64-apple-darwin
-          - platform: windows-latest     # Windows x64
+          - platform: windows-latest # Windows x64
             args: ''
-            rust-target: ''
+            rust-target: x86_64-pc-windows-msvc
 
     runs-on: ${{ matrix.platform }}
 
@@ -32,7 +32,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install Rust
@@ -49,28 +49,33 @@ jobs:
         run: npm ci
 
       # ── Place FFmpeg sidecars ──────────────────────────────────────────────
-      # Download pre-built FFmpeg binaries and rename them to Tauri sidecar convention.
-      # Tauri expects: binaries/ffmpeg-<target-triple>[.exe]
+      # Tauri sidecar convention: binaries/ffmpeg-<target-triple>[.exe]
+      # macOS arm64: static build from evermeet.cx
+      # macOS x86_64: homebrew install (system frameworks always present on macOS)
+      # Windows: static GPL build from BtbN/FFmpeg-Builds
 
-      - name: Download FFmpeg (macOS aarch64)
+      - name: Download FFmpeg (macOS arm64)
         if: matrix.rust-target == 'aarch64-apple-darwin'
         run: |
-          curl -L "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip" -o ffmpeg.zip
-          curl -L "https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip" -o ffprobe.zip
-          unzip -o ffmpeg.zip  -d src-tauri/binaries && mv src-tauri/binaries/ffmpeg  src-tauri/binaries/ffmpeg-aarch64-apple-darwin
-          unzip -o ffprobe.zip -d src-tauri/binaries && mv src-tauri/binaries/ffprobe src-tauri/binaries/ffprobe-aarch64-apple-darwin
-          chmod +x src-tauri/binaries/ffmpeg-aarch64-apple-darwin src-tauri/binaries/ffprobe-aarch64-apple-darwin
+          curl -fsSL "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip" -o ffmpeg.zip
+          curl -fsSL "https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip" -o ffprobe.zip
+          unzip -o ffmpeg.zip  -d src-tauri/binaries
+          unzip -o ffprobe.zip -d src-tauri/binaries
+          mv src-tauri/binaries/ffmpeg  src-tauri/binaries/ffmpeg-aarch64-apple-darwin
+          mv src-tauri/binaries/ffprobe src-tauri/binaries/ffprobe-aarch64-apple-darwin
+          chmod +x src-tauri/binaries/ffmpeg-aarch64-apple-darwin \
+                   src-tauri/binaries/ffprobe-aarch64-apple-darwin
 
       - name: Download FFmpeg (macOS x86_64)
         if: matrix.rust-target == 'x86_64-apple-darwin'
         run: |
-          curl -L "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip" -o ffmpeg.zip
-          curl -L "https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip" -o ffprobe.zip
-          unzip -o ffmpeg.zip  -d src-tauri/binaries && mv src-tauri/binaries/ffmpeg  src-tauri/binaries/ffmpeg-x86_64-apple-darwin
-          unzip -o ffprobe.zip -d src-tauri/binaries && mv src-tauri/binaries/ffprobe src-tauri/binaries/ffprobe-x86_64-apple-darwin
-          chmod +x src-tauri/binaries/ffmpeg-x86_64-apple-darwin src-tauri/binaries/ffprobe-x86_64-apple-darwin
+          brew install ffmpeg
+          cp "$(brew --prefix)/bin/ffmpeg"  src-tauri/binaries/ffmpeg-x86_64-apple-darwin
+          cp "$(brew --prefix)/bin/ffprobe" src-tauri/binaries/ffprobe-x86_64-apple-darwin
+          chmod +x src-tauri/binaries/ffmpeg-x86_64-apple-darwin \
+                   src-tauri/binaries/ffprobe-x86_64-apple-darwin
 
-      - name: Download FFmpeg (Windows)
+      - name: Download FFmpeg (Windows x64)
         if: matrix.platform == 'windows-latest'
         shell: pwsh
         run: |
@@ -78,27 +83,41 @@ jobs:
           $url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
           Invoke-WebRequest $url -OutFile ffmpeg.zip
           Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_tmp -Force
-          $bin = Get-ChildItem ffmpeg_tmp -Recurse -Filter "ffmpeg.exe" | Select-Object -First 1
+          $bin   = Get-ChildItem ffmpeg_tmp -Recurse -Filter "ffmpeg.exe"  | Select-Object -First 1
           $probe = Get-ChildItem ffmpeg_tmp -Recurse -Filter "ffprobe.exe" | Select-Object -First 1
-          Copy-Item $bin.FullName  src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe
+          Copy-Item $bin.FullName   src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe
           Copy-Item $probe.FullName src-tauri/binaries/ffprobe-x86_64-pc-windows-msvc.exe
+
+      # ── Verify sidecars were placed ────────────────────────────────────────
+      - name: Verify FFmpeg sidecars (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          echo "=== src-tauri/binaries/ ===" && ls -lh src-tauri/binaries/
+
+      - name: Verify FFmpeg sidecars (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Get-ChildItem src-tauri/binaries/
 
       # ── Build & release ────────────────────────────────────────────────────
       - name: Build and release
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v0.5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS signing (optional — set in repo secrets for notarized builds)
-          APPLE_CERTIFICATE:            ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD:   ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY:       ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID:                     ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD:               ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID:                ${{ secrets.APPLE_TEAM_ID }}
+          # macOS signing — set repo secrets for notarized builds
+          APPLE_CERTIFICATE:          ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY:     ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID:                   ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD:             ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID:              ${{ secrets.APPLE_TEAM_ID }}
+          # Tauri updater signing
+          TAURI_SIGNING_PRIVATE_KEY:          ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
-          tagName:        ${{ github.ref_name }}
-          releaseName:    'DepoAudio ${{ github.ref_name }}'
-          releaseBody:    'See CHANGELOG.md for details.'
-          releaseDraft:   true
-          prerelease:     false
-          args:           ${{ matrix.args }}
+          tagName:      ${{ github.ref_name }}
+          releaseName:  'DepoAudio ${{ github.ref_name }}'
+          releaseBody:  'See CHANGELOG.md for details.'
+          releaseDraft: true
+          prerelease:   false
+          args:         ${{ matrix.args }}

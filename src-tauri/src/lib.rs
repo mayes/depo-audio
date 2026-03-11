@@ -741,7 +741,7 @@ pub fn library_import_file(
     label: String,
 ) -> Result<(), String> {
     let mut lib = state.library.lock().map_err(|e| e.to_string())?;
-    let lib_path = lib_path_(&app);
+    let lib_path = lib_path(&app);
     let trimmed = case_name.trim().to_string();
     if trimmed.is_empty() { return Err("Case name cannot be empty".into()); }
     let size = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
