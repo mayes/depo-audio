@@ -55,31 +55,17 @@ jobs:
       # ── Place FFmpeg sidecars ──────────────────────────────────────────────
       # Tauri sidecar convention: binaries/ffmpeg-<target-triple>[.exe]
       #
-      # macOS arm64:   static build from evermeet.cx (arm64 runner)
-      # macOS x86_64:  brew install on native Intel runner (macos-13)
-      # Windows x64:   static GPL build from BtbN/FFmpeg-Builds
+      # macOS:   brew install on native runners (arm64 on macos-latest, x86_64 on macos-13)
+      # Windows: static GPL build from BtbN/FFmpeg-Builds
 
-      - name: Download FFmpeg (macOS arm64)
-        if: matrix.rust-target == 'aarch64-apple-darwin'
+      - name: Install FFmpeg (macOS)
+        if: runner.os == 'macOS'
         run: |
-          curl -fsSL "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip"  -o ffmpeg.zip
-          curl -fsSL "https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip" -o ffprobe.zip
-          unzip -o ffmpeg.zip  -d src-tauri/binaries
-          unzip -o ffprobe.zip -d src-tauri/binaries
-          mv src-tauri/binaries/ffmpeg  src-tauri/binaries/ffmpeg-aarch64-apple-darwin
-          mv src-tauri/binaries/ffprobe src-tauri/binaries/ffprobe-aarch64-apple-darwin
-          chmod +x src-tauri/binaries/ffmpeg-aarch64-apple-darwin \
-                   src-tauri/binaries/ffprobe-aarch64-apple-darwin
-
-      - name: Install FFmpeg (macOS x86_64)
-        if: matrix.rust-target == 'x86_64-apple-darwin'
-        run: |
-          # Native Intel runner — brew install gives us x86_64 binaries directly
           brew install ffmpeg
-          cp "$(which ffmpeg)"  src-tauri/binaries/ffmpeg-x86_64-apple-darwin
-          cp "$(which ffprobe)" src-tauri/binaries/ffprobe-x86_64-apple-darwin
-          chmod +x src-tauri/binaries/ffmpeg-x86_64-apple-darwin \
-                   src-tauri/binaries/ffprobe-x86_64-apple-darwin
+          cp "$(which ffmpeg)"  "src-tauri/binaries/ffmpeg-${{ matrix.rust-target }}"
+          cp "$(which ffprobe)" "src-tauri/binaries/ffprobe-${{ matrix.rust-target }}"
+          chmod +x "src-tauri/binaries/ffmpeg-${{ matrix.rust-target }}" \
+                   "src-tauri/binaries/ffprobe-${{ matrix.rust-target }}"
 
       - name: Download FFmpeg (Windows x64)
         if: matrix.platform == 'windows-latest'
