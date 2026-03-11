@@ -10,6 +10,9 @@ jobs:
     permissions:
       contents: write
 
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     strategy:
       fail-fast: false
       matrix:
@@ -17,7 +20,7 @@ jobs:
           - platform: macos-latest   # Apple Silicon (arm64)
             args: '--target aarch64-apple-darwin'
             rust-target: aarch64-apple-darwin
-          - platform: macos-13       # Intel Mac (x86_64)
+          - platform: macos-latest   # Intel Mac (x86_64) — cross-compiled via Rosetta 2
             args: '--target x86_64-apple-darwin'
             rust-target: x86_64-apple-darwin
           - platform: windows-latest # Windows x64
@@ -41,7 +44,7 @@ jobs:
           targets: ${{ matrix.rust-target }}
 
       - name: Rust cache
-        uses: swatinem/rust-cache@v2
+        uses: swatinem/rust-cache@v2.8.2
         with:
           workspaces: './src-tauri -> target'
 
@@ -50,14 +53,16 @@ jobs:
 
       # ── Place FFmpeg sidecars ──────────────────────────────────────────────
       # Tauri sidecar convention: binaries/ffmpeg-<target-triple>[.exe]
-      # macOS arm64: static build from evermeet.cx
-      # macOS x86_64: homebrew install (system frameworks always present on macOS)
-      # Windows: static GPL build from BtbN/FFmpeg-Builds
+      #
+      # macOS arm64:   static build from evermeet.cx (native arm64 binary)
+      # macOS x86_64:  x86_64 Homebrew via Rosetta 2 (arch -x86_64)
+      #                /usr/local is the x86_64 Homebrew prefix on arm64 runners
+      # Windows x64:   static GPL build from BtbN/FFmpeg-Builds
 
       - name: Download FFmpeg (macOS arm64)
         if: matrix.rust-target == 'aarch64-apple-darwin'
         run: |
-          curl -fsSL "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip" -o ffmpeg.zip
+          curl -fsSL "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip"  -o ffmpeg.zip
           curl -fsSL "https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip" -o ffprobe.zip
           unzip -o ffmpeg.zip  -d src-tauri/binaries
           unzip -o ffprobe.zip -d src-tauri/binaries
@@ -66,12 +71,15 @@ jobs:
           chmod +x src-tauri/binaries/ffmpeg-aarch64-apple-darwin \
                    src-tauri/binaries/ffprobe-aarch64-apple-darwin
 
-      - name: Download FFmpeg (macOS x86_64)
+      - name: Download FFmpeg (macOS x86_64 via Rosetta 2)
         if: matrix.rust-target == 'x86_64-apple-darwin'
         run: |
-          brew install ffmpeg
-          cp "$(brew --prefix)/bin/ffmpeg"  src-tauri/binaries/ffmpeg-x86_64-apple-darwin
-          cp "$(brew --prefix)/bin/ffprobe" src-tauri/binaries/ffprobe-x86_64-apple-darwin
+          # Ensure Rosetta 2 is installed (no-op if already present)
+          softwareupdate --install-rosetta --agree-to-license 2>/dev/null || true
+          # x86_64 Homebrew lives at /usr/local on arm64 runners
+          arch -x86_64 /usr/local/bin/brew install ffmpeg
+          cp /usr/local/opt/ffmpeg/bin/ffmpeg  src-tauri/binaries/ffmpeg-x86_64-apple-darwin
+          cp /usr/local/opt/ffmpeg/bin/ffprobe src-tauri/binaries/ffprobe-x86_64-apple-darwin
           chmod +x src-tauri/binaries/ffmpeg-x86_64-apple-darwin \
                    src-tauri/binaries/ffprobe-x86_64-apple-darwin
 
@@ -91,8 +99,7 @@ jobs:
       # ── Verify sidecars were placed ────────────────────────────────────────
       - name: Verify FFmpeg sidecars (Unix)
         if: runner.os != 'Windows'
-        run: |
-          echo "=== src-tauri/binaries/ ===" && ls -lh src-tauri/binaries/
+        run: echo "=== src-tauri/binaries/ ===" && ls -lh src-tauri/binaries/
 
       - name: Verify FFmpeg sidecars (Windows)
         if: runner.os == 'Windows'
@@ -101,7 +108,7 @@ jobs:
 
       # ── Build & release ────────────────────────────────────────────────────
       - name: Build and release
-        uses: tauri-apps/tauri-action@v0.5
+        uses: tauri-apps/tauri-action@v0.6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # macOS signing — set repo secrets for notarized builds
