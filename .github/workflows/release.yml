@@ -20,7 +20,7 @@ jobs:
           - platform: macos-latest   # Apple Silicon (arm64)
             args: '--target aarch64-apple-darwin'
             rust-target: aarch64-apple-darwin
-          - platform: macos-latest   # Intel Mac (x86_64) — cross-compiled via Rosetta 2
+          - platform: macos-13       # Intel Mac (x86_64) — native x86_64 runner
             args: '--target x86_64-apple-darwin'
             rust-target: x86_64-apple-darwin
           - platform: windows-latest # Windows x64
@@ -71,15 +71,12 @@ jobs:
           chmod +x src-tauri/binaries/ffmpeg-aarch64-apple-darwin \
                    src-tauri/binaries/ffprobe-aarch64-apple-darwin
 
-      - name: Download FFmpeg (macOS x86_64 via Rosetta 2)
+      - name: Download FFmpeg (macOS x86_64)
         if: matrix.rust-target == 'x86_64-apple-darwin'
         run: |
-          # Ensure Rosetta 2 is installed (no-op if already present)
-          softwareupdate --install-rosetta --agree-to-license 2>/dev/null || true
-          # x86_64 Homebrew lives at /usr/local on arm64 runners
-          arch -x86_64 /usr/local/bin/brew install ffmpeg
-          cp /usr/local/opt/ffmpeg/bin/ffmpeg  src-tauri/binaries/ffmpeg-x86_64-apple-darwin
-          cp /usr/local/opt/ffmpeg/bin/ffprobe src-tauri/binaries/ffprobe-x86_64-apple-darwin
+          brew install ffmpeg
+          cp "$(brew --prefix)/bin/ffmpeg"  src-tauri/binaries/ffmpeg-x86_64-apple-darwin
+          cp "$(brew --prefix)/bin/ffprobe" src-tauri/binaries/ffprobe-x86_64-apple-darwin
           chmod +x src-tauri/binaries/ffmpeg-x86_64-apple-darwin \
                    src-tauri/binaries/ffprobe-x86_64-apple-darwin
 

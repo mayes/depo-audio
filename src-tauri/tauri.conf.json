@@ -49,14 +49,6 @@
       "minimumSystemVersion": "12.0",
       "entitlements": null
     },
-    "windows": {
-      "wix": {
-        "language": "en-US"
-      },
-      "nsis": {
-        "oneclick": false,
-        "perMachine": false
-      }
-    }
+    "windows": {}
   }
 }
