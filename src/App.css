@@ -551,3 +551,21 @@ body{
 .ch-item {
   grid-template-columns: 10px 36px 1fr 28px;
 }
+
+/* ── Cancel button ───────────────────────────────────────────────────────── */
+
+.btn--danger {
+  background: var(--red);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0 18px;
+  height: 36px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 150ms;
+}
+.btn--danger:hover {
+  background: #c03030;
+}

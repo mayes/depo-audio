@@ -3,8 +3,9 @@ import { invoke } from '@tauri-apps/api/core'
 import { CH_COLORS } from '../../constants'
 import LibraryFile from './LibraryFile'
 import ImportModal from './ImportModal'
+import Spinner from '../common/Spinner'
 
-export default function LibraryTab({ cases, setCases, search, setSearch, labels, player, onReexport }) {
+export default function LibraryTab({ cases, setCases, search, setSearch, labels, player, loading, onReexport }) {
   const [showArchived, setShowArchived] = useState(false)
   const [expandedCases, setExpandedCases]   = useState({})
   const [editingCase, setEditingCase]       = useState(null)
@@ -70,7 +71,14 @@ export default function LibraryTab({ cases, setCases, search, setSearch, labels,
         </button>
       </div>
 
-      {filtered.length === 0 && !importModal && (
+      {loading && (
+        <div className="lib-empty">
+          <Spinner />
+          <p className="lib-empty-title">Loading library…</p>
+        </div>
+      )}
+
+      {!loading && filtered.length === 0 && !importModal && (
         <div className="lib-empty">
           <svg width="48" height="48" viewBox="0 0 48 48" fill="none" className="lib-empty-icon">
             <rect x="8" y="12" width="32" height="28" rx="3" stroke="currentColor" strokeWidth="1.5"/>
@@ -107,9 +115,9 @@ export default function LibraryTab({ cases, setCases, search, setSearch, labels,
                 </span>
               </div>
               <div className="lib-case-actions" onClick={e => e.stopPropagation()}>
-                <button className="lib-action-btn" title="Rename" onClick={() => { setEditingCase(c.id); setEditName(c.name) }}>✎</button>
-                <button className="lib-action-btn" title={c.archived?'Unarchive':'Archive'} onClick={() => archiveCase(c.id, !c.archived)}>{c.archived ? '↩' : '⊙'}</button>
-                <button className="lib-action-btn lib-action-btn--del" title="Delete" onClick={() => deleteCase(c.id)}>✕</button>
+                <button className="lib-action-btn" title="Rename" aria-label={`Rename ${c.name}`} onClick={() => { setEditingCase(c.id); setEditName(c.name) }}>✎</button>
+                <button className="lib-action-btn" title={c.archived?'Unarchive':'Archive'} aria-label={c.archived ? `Unarchive ${c.name}` : `Archive ${c.name}`} onClick={() => archiveCase(c.id, !c.archived)}>{c.archived ? '↩' : '⊙'}</button>
+                <button className="lib-action-btn lib-action-btn--del" title="Delete" aria-label={`Delete ${c.name}`} onClick={() => deleteCase(c.id)}>✕</button>
               </div>
             </div>
 
@@ -126,7 +134,7 @@ export default function LibraryTab({ cases, setCases, search, setSearch, labels,
                           if (player && allFiles.length) player.playAll(allFiles)
                         }} aria-label="Play all files in this session">▶</button>
                         <button className="lib-action-btn" title="Re-export source" onClick={() => onReexport(s.sourceFile, c.name)}>⟳ Re-export</button>
-                        <button className="lib-action-btn lib-action-btn--del" title="Remove session" onClick={() => deleteSession(c.id, s.id)}>✕</button>
+                        <button className="lib-action-btn lib-action-btn--del" title="Remove session" aria-label="Remove session" onClick={() => deleteSession(c.id, s.id)}>✕</button>
                       </div>
                     </div>
                     <div className="lib-participants">

@@ -43,12 +43,17 @@ export default function App() {
 
   // Library state
   const [cases, setCases]     = useState([])
+  const [libLoading, setLibLoading] = useState(false)
   const [libSearch, setLibSearch] = useState('')
 
   // Load library when switching to library tab
   useEffect(() => {
     if (tab === 'library') {
-      invoke('library_get').then(setCases).catch(() => {})
+      setLibLoading(true)
+      invoke('library_get')
+        .then(setCases)
+        .catch(e => console.error('Failed to load library:', e))
+        .finally(() => setLibLoading(false))
     }
   }, [tab])
 
@@ -119,6 +124,7 @@ export default function App() {
           search={libSearch} setSearch={setLibSearch}
           labels={prefs.labels}
           player={player}
+          loading={libLoading}
           onReexport={(srcPath, srcCaseName) => {
             fileDrop.setFiles([{path:srcPath, name:basename(srcPath), fmt:null}])
             fileDrop.setCaseName(srcCaseName || '')

@@ -19,7 +19,7 @@ export default function ConvertTab({ prefs, fileDrop, conversion, startConversio
     onDragOver, onDragLeave, onDrop, browseFiles, browseOutDir,
     removeFile, clearAll,
   } = fileDrop
-  const { jobs, converting, doneCount, failCount } = conversion
+  const { jobs, converting, doneCount, failCount, cancelConversion } = conversion
 
   const anyProc = normalize || trim || fade || hpf
 
@@ -245,11 +245,17 @@ export default function ConvertTab({ prefs, fileDrop, conversion, startConversio
           {converting && <span className="status-pill status-pill--active"><span className="status-dot"/>{doneCount > 0 ? `${doneCount} / ${files.length} done` : 'Converting…'}</span>}
           {!converting && doneCount > 0 && <span className="status-pill status-pill--done">✓ {doneCount} file{doneCount!==1?'s':''} converted{failCount>0?`, ${failCount} failed`:''}</span>}
         </div>
-        <button className={`btn btn--primary${converting||!files.length?' btn--disabled':''}`}
-          onClick={startConversion} disabled={converting||!files.length}
-          aria-label={converting ? 'Converting files' : `Convert ${files.length} file${files.length!==1?'s':''}`}>
-          {converting ? <><Spinner />Converting…</> : <>▶ Convert{files.length > 1 ? ` ${files.length} Files` : ''}</>}
-        </button>
+        {converting ? (
+          <button className="btn btn--danger" onClick={cancelConversion} aria-label="Cancel conversion">
+            ✕ Cancel
+          </button>
+        ) : (
+          <button className={`btn btn--primary${!files.length?' btn--disabled':''}`}
+            onClick={startConversion} disabled={!files.length}
+            aria-label={`Convert ${files.length} file${files.length!==1?'s':''}`}>
+            ▶ Convert{files.length > 1 ? ` ${files.length} Files` : ''}
+          </button>
+        )}
       </footer>
       <audio ref={preview.audioRef} style={{display:'none'}} />
     </>

@@ -157,7 +157,11 @@ pub fn prefs_set(app: AppHandle, state: State<'_, AppState>, patch: serde_json::
     let path = prefs_path(&app);
     if let Some(parent) = path.parent() { let _ = fs::create_dir_all(parent); }
     if let Ok(json) = serde_json::to_string_pretty(&*prefs) {
-        let _ = fs::write(path, json);
+        // Atomic write: temp file + rename
+        let tmp = path.with_extension("json.tmp");
+        if fs::write(&tmp, &json).is_ok() {
+            let _ = fs::rename(&tmp, &path);
+        }
     }
     true
 }

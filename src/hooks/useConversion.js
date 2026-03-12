@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 
@@ -7,9 +7,16 @@ let jobCounter = 0
 export default function useConversion() {
   const [jobs, setJobs]             = useState({})
   const [converting, setConverting] = useState(false)
+  const cancelledRef                = useRef(false)
+  const unlistenersRef              = useRef([])
+
+  const cancelConversion = useCallback(() => {
+    cancelledRef.current = true
+  }, [])
 
   const startConversion = useCallback(async ({ files, outDir, mode, formatOut, rate, labels, chanVols, normalize, trim, fade, fadeDur, hpf, caseName, setCases }) => {
     if (converting || !files.length) return
+    cancelledRef.current = false
     setConverting(true)
     setJobs(Object.fromEntries(files.map(f => [f.path, { status:'queued', outputs:[], error:null }])))
 
@@ -35,7 +42,21 @@ export default function useConversion() {
       })
     })
 
+    unlistenersRef.current = [unlistenProg, unlistenDone, unlistenErr]
+
     for (const file of files) {
+      // Check if cancelled before starting next file
+      if (cancelledRef.current) {
+        setJobs(prev => {
+          const updated = { ...prev }
+          for (const [path, j] of Object.entries(updated)) {
+            if (j.status === 'queued') updated[path] = { ...j, status: 'error', error: 'Cancelled' }
+          }
+          return updated
+        })
+        break
+      }
+
       const id = `job_${++jobCounter}`
       setJobs(prev => ({ ...prev, [file.path]: { ...prev[file.path], status:'converting', id } }))
       const resolved = outDir || file.path.replace(/\\/g,'/').split('/').slice(0,-1).join('/')
@@ -59,13 +80,18 @@ export default function useConversion() {
       })
     }
 
-    await unlistenProg(); await unlistenDone(); await unlistenErr()
+    // Clean up event listeners
+    for (const unlisten of unlistenersRef.current) {
+      await unlisten()
+    }
+    unlistenersRef.current = []
+
     setConverting(false)
-    invoke('library_get').then(setCases).catch(() => {})
+    invoke('library_get').then(setCases).catch(e => console.error('Failed to reload library:', e))
   }, [converting])
 
   const doneCount = Object.values(jobs).filter(j => j.status === 'done').length
   const failCount = Object.values(jobs).filter(j => j.status === 'error').length
 
-  return { jobs, setJobs, converting, startConversion, doneCount, failCount }
+  return { jobs, setJobs, converting, startConversion, cancelConversion, doneCount, failCount }
 }
