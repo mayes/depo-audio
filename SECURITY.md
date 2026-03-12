@@ -2,20 +2,23 @@
 
 ## Supported Versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
-
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+| Version | Supported |
+|---------|-----------|
+| 0.3.x   | ✅ Current |
+| 0.2.x   | ✅ Security fixes only |
+| < 0.2   | ❌ No longer supported |
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
+If you discover a security vulnerability in DepoAudio, please report it responsibly:
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+1. **Open a GitHub Issue** at [github.com/mayes/depo-audio/issues](https://github.com/mayes/depo-audio/issues) with the label `security`
+2. **Do not** include exploit details in public issues — just note that it's security-related and we'll coordinate privately
+
+We aim to acknowledge reports within 48 hours and provide a fix or mitigation plan within 7 days for confirmed vulnerabilities.
+
+## Scope
+
+DepoAudio processes audio files locally on your machine. It does not transmit audio data to any external servers. The only network activity is:
+- **Auto-update checks** — fetches `latest.json` from GitHub Releases to check for new versions
+- **FFmpeg sidecars** — bundled locally, no network calls during conversion

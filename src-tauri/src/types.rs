@@ -17,6 +17,7 @@ pub struct FormatInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ConvertJob {
     pub id: String,
     pub src_path: String,
