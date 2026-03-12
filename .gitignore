@@ -5,6 +5,7 @@ dist/
 # Rust / Tauri
 src-tauri/target/
 src-tauri/binaries/
+src-tauri/gen/
 
 # Env
 .env
@@ -13,3 +14,13 @@ src-tauri/binaries/
 # OS
 .DS_Store
 Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Claude Code
+.claude/
