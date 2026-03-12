@@ -11,6 +11,7 @@ import useUpdater from './hooks/useUpdater'
 import usePlayer from './hooks/usePlayer'
 import usePreview from './hooks/usePreview'
 
+import ErrorBoundary from './components/common/ErrorBoundary'
 import { LogoSvg } from './components/common/Icons'
 import UpdateBanner from './components/common/UpdateBanner'
 import PlayerBar from './components/common/PlayerBar'
@@ -69,6 +70,7 @@ export default function App() {
   }
 
   return (
+    <ErrorBoundary>
     <div className="app">
       {/* ── Update Banner */}
       {updater.visible && (
@@ -142,5 +144,6 @@ export default function App() {
       {/* Persistent player bar */}
       <PlayerBar player={player} />
     </div>
+    </ErrorBoundary>
   )
 }

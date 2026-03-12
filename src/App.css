@@ -569,3 +569,44 @@ body{
 .btn--danger:hover {
   background: #c03030;
 }
+
+/* ── Error Boundary ──────────────────────────────────────────────────────── */
+
+.error-boundary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg);
+  padding: 24px;
+}
+.error-boundary__inner {
+  text-align: center;
+  max-width: 420px;
+}
+.error-boundary__title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.error-boundary__msg {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.error-boundary__btn {
+  background: var(--gold);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 24px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 150ms;
+}
+.error-boundary__btn:hover {
+  background: var(--gold-hi);
+}
