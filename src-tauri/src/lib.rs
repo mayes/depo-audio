@@ -3,6 +3,7 @@ mod conversion;
 mod ffmpeg;
 mod helpers;
 mod persistence;
+mod preview;
 pub mod types;
 
 use types::AppState;
@@ -30,6 +31,8 @@ pub fn run() {
             commands::library_import_file,
             commands::prefs_get,
             commands::prefs_set,
+            commands::generate_preview,
+            commands::cleanup_previews,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

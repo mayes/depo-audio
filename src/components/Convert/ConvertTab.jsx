@@ -4,8 +4,10 @@ import Spinner from '../common/Spinner'
 import { ModeIcon, WaveformIcon } from '../common/Icons'
 import FormatTable from './FormatTable'
 import FileRow from './FileRow'
+import PreviewBtn from './PreviewBtn'
+import { cacheKey } from '../../hooks/usePreview'
 
-export default function ConvertTab({ prefs, fileDrop, conversion, startConversion, player }) {
+export default function ConvertTab({ prefs, fileDrop, conversion, startConversion, player, preview }) {
   const {
     mode, setMode, formatOut, setFormatOut, labels, setLabels,
     chanVols, setChanVols, outDir, setOutDir, rate, setRate,
@@ -62,6 +64,13 @@ export default function ConvertTab({ prefs, fileDrop, conversion, startConversio
                   <input className="ch-input" value={l} maxLength={24} placeholder={`Channel ${i+1}`}
                     aria-label={`Channel ${i+1} label`}
                     onChange={e => setLabels(p => p.map((v,j) => j===i ? e.target.value:v))} />
+                  <PreviewBtn
+                    disabled={!files.length}
+                    loading={preview.cache[cacheKey({srcPath:files[0]?.path,previewType:'channel',channel:i,startSec:30,duration:15})]?.status==='loading'}
+                    playing={preview.activeKey===cacheKey({srcPath:files[0]?.path,previewType:'channel',channel:i,startSec:30,duration:15})}
+                    color={CH_COLORS[i]}
+                    onClick={() => preview.generateAndPlay({srcPath:files[0]?.path,previewType:'channel',channel:i,startSec:30,duration:15})}
+                  />
                 </div>
               ))}
             </div>
@@ -73,7 +82,15 @@ export default function ConvertTab({ prefs, fileDrop, conversion, startConversio
               <span className="panel-label">CHANNEL MIX</span>
               {mode !== 'stereo'
                 ? <span className="panel-hint panel-hint--inactive">Active in Mix to Stereo mode</span>
-                : <span className="panel-hint">Per-channel volume — 1.0 = unity, 0.0 = mute, 2.0 = boost</span>
+                : <>
+                    <span className="panel-hint">Per-channel volume — 1.0 = unity, 0.0 = mute, 2.0 = boost</span>
+                    <PreviewBtn label="Preview Mix"
+                      disabled={!files.length || mode !== 'stereo'}
+                      loading={preview.cache[cacheKey({srcPath:files[0]?.path,previewType:'mix',chanVols,startSec:30,duration:15})]?.status==='loading'}
+                      playing={preview.activeKey===cacheKey({srcPath:files[0]?.path,previewType:'mix',chanVols,startSec:30,duration:15})}
+                      onClick={() => preview.generateAndPlay({srcPath:files[0]?.path,previewType:'mix',chanVols,startSec:30,duration:15})}
+                    />
+                  </>
               }
             </div>
             <div className="chan-vols-grid">
@@ -140,6 +157,12 @@ export default function ConvertTab({ prefs, fileDrop, conversion, startConversio
             {/* Live processing chain preview */}
             <div className="proc-chain" role="status" aria-label="Processing chain">
               <span className="proc-chain-label">CHAIN</span>
+              <PreviewBtn label="Preview"
+                disabled={!files.length || !anyProc}
+                loading={preview.cache[cacheKey({srcPath:files[0]?.path,previewType:'processing',chanVols,mode,normalize,trim,fade,fadeDur,hpf,startSec:30,duration:15})]?.status==='loading'}
+                playing={preview.activeKey===cacheKey({srcPath:files[0]?.path,previewType:'processing',chanVols,mode,normalize,trim,fade,fadeDur,hpf,startSec:30,duration:15})}
+                onClick={() => preview.generateAndPlay({srcPath:files[0]?.path,previewType:'processing',chanVols,mode,normalize,trim,fade,fadeDur,hpf,startSec:30,duration:15})}
+              />
               {anyProc ? (
                 <div className="proc-chain-steps">
                   {hpf       && <><span className="proc-chip proc-chip--on">HPF 80Hz</span><span className="proc-chain-arrow">→</span></>}
@@ -228,6 +251,7 @@ export default function ConvertTab({ prefs, fileDrop, conversion, startConversio
           {converting ? <><Spinner />Converting…</> : <>▶ Convert{files.length > 1 ? ` ${files.length} Files` : ''}</>}
         </button>
       </footer>
+      <audio ref={preview.audioRef} style={{display:'none'}} />
     </>
   )
 }

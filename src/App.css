@@ -490,3 +490,64 @@ body{
   .pb-vol-slider{border:1px solid var(--text2)}
   .toggle{border:1px solid var(--text2)}
 }
+
+
+/* ── Preview buttons ─────────────────────────────────────────────────────── */
+
+.preview-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--sub);
+  cursor: pointer;
+  transition: all 150ms;
+  flex-shrink: 0;
+}
+.preview-btn:hover:not(:disabled) {
+  color: var(--preview-color, var(--gold));
+  border-color: var(--preview-color, var(--gold));
+  background: rgba(196,154,54,.08);
+}
+.preview-btn:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+.preview-btn--labeled {
+  width: auto;
+  padding: 0 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .3px;
+}
+.preview-btn--playing {
+  background: var(--gold) !important;
+  border-color: var(--gold) !important;
+  color: #fff !important;
+}
+.preview-btn--loading {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.preview-spinner {
+  animation: preview-spin .8s linear infinite;
+}
+@keyframes preview-spin {
+  to { transform: rotate(360deg); }
+}
+
+.preview-btn-label {
+  white-space: nowrap;
+}
+
+/* Adjust channel label grid to fit preview button */
+.ch-item {
+  grid-template-columns: 10px 36px 1fr 28px;
+}

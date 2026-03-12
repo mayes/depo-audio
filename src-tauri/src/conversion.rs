@@ -48,7 +48,8 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
 
     let ext = output_ext(&job.format);
     let out_codec = output_args(&job.format, &job.rate);
-    let proc = build_proc_filters(app, job, feed, &input_codec).await;
+    let proc_opts = crate::ffmpeg::ProcOpts::from(job);
+    let proc = build_proc_filters(app, &proc_opts, feed, &input_codec).await;
 
     let mut ffmpeg_args: Vec<String> = input_codec.clone();
     ffmpeg_args.extend(["-i".into(), feed.to_string_lossy().to_string()]);

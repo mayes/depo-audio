@@ -170,3 +170,19 @@ pub fn show_in_folder(app: AppHandle, path: String) -> Result<(), String> {
         .reveal_item_in_dir(&path)
         .map_err(|e| e.to_string())
 }
+
+
+// ── Preview commands ──────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn generate_preview(
+    app: AppHandle,
+    req: crate::preview::PreviewRequest,
+) -> Result<String, String> {
+    crate::preview::generate_preview(&app, &req).await
+}
+
+#[tauri::command]
+pub fn cleanup_previews() -> u32 {
+    crate::preview::cleanup_previews()
+}

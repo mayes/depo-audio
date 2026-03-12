@@ -9,6 +9,7 @@ import useFileDrop from './hooks/useFileDrop'
 import useConversion from './hooks/useConversion'
 import useUpdater from './hooks/useUpdater'
 import usePlayer from './hooks/usePlayer'
+import usePreview from './hooks/usePreview'
 
 import { LogoSvg } from './components/common/Icons'
 import UpdateBanner from './components/common/UpdateBanner'
@@ -27,6 +28,7 @@ export default function App() {
   const conversion = useConversion()
   const updater = useUpdater()
   const player = usePlayer()
+  const preview = usePreview()
 
   const openFiles = async () => {
     const selected = await openDialog({
@@ -107,6 +109,7 @@ export default function App() {
           conversion={conversion}
           startConversion={handleStartConversion}
           player={player}
+          preview={preview}
         />
       )}
 

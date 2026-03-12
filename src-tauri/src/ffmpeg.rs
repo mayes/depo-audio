@@ -52,7 +52,22 @@ pub(crate) async fn probe_channels(app: &AppHandle, feed: &Path, input_codec: &[
 
 // ── Filter chain builder ─────────────────────────────────────────────────────
 
-pub(crate) async fn build_proc_filters(app: &AppHandle, opts: &ConvertJob, feed: &Path, input_codec: &[String]) -> Vec<String> {
+/// Processing filter parameters — extracted from ConvertJob so preview can reuse this.
+pub(crate) struct ProcOpts {
+    pub hpf: bool,
+    pub normalize: bool,
+    pub trim: bool,
+    pub fade: bool,
+    pub fade_dur: f64,
+}
+
+impl From<&ConvertJob> for ProcOpts {
+    fn from(j: &ConvertJob) -> Self {
+        Self { hpf: j.hpf, normalize: j.normalize, trim: j.trim, fade: j.fade, fade_dur: j.fade_dur }
+    }
+}
+
+pub(crate) async fn build_proc_filters(app: &AppHandle, opts: &ProcOpts, feed: &Path, input_codec: &[String]) -> Vec<String> {
     let mut filters = Vec::new();
     if opts.hpf        { filters.push("highpass=f=80".into()); }
     if opts.normalize  { filters.push("loudnorm=I=-16:TP=-1.5:LRA=11".into()); }
@@ -66,6 +81,28 @@ pub(crate) async fn build_proc_filters(app: &AppHandle, opts: &ConvertJob, feed:
         }
     }
     filters
+}
+
+/// Run FFmpeg without progress tracking — for short preview clips
+pub(crate) async fn run_ffmpeg_silent(app: &AppHandle, args: Vec<String>) -> Result<(), String> {
+    let output = app
+        .shell()
+        .sidecar(ffmpeg_bin_name())
+        .map_err(|e| e.to_string())?
+        .args(args)
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let lines: Vec<&str> = stderr.lines()
+            .filter(|l| !l.starts_with("ffmpeg version") && !l.starts_with("built") && !l.starts_with("lib") && !l.starts_with("configuration:"))
+            .collect();
+        let msg = lines.iter().rev().take(4).cloned().collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join(" | ");
+        return Err(msg.chars().take(300).collect());
+    }
+    Ok(())
 }
 
 // ── Run FFmpeg sidecar ────────────────────────────────────────────────────────
