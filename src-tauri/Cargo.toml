@@ -1,6 +1,6 @@
 [package]
 name = "depo-audio"
-version = "0.3.0"
+version = "0.4.0"
 description = "DepoAudio — Court Recording Audio Converter"
 authors = ["Andrew Mayes <andrew@executivereportingservice.com>"]
 license = "MIT"
