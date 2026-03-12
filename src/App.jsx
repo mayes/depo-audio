@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { basename } from './utils'
 
 import useTheme from './hooks/useTheme'
@@ -7,9 +8,12 @@ import usePreferences from './hooks/usePreferences'
 import useFileDrop from './hooks/useFileDrop'
 import useConversion from './hooks/useConversion'
 import useUpdater from './hooks/useUpdater'
+import usePlayer from './hooks/usePlayer'
 
 import { LogoSvg } from './components/common/Icons'
 import UpdateBanner from './components/common/UpdateBanner'
+import PlayerBar from './components/common/PlayerBar'
+import QueuePanel from './components/common/QueuePanel'
 import ConvertTab from './components/Convert/ConvertTab'
 import LibraryTab from './components/Library/LibraryTab'
 
@@ -22,6 +26,18 @@ export default function App() {
   const fileDrop = useFileDrop()
   const conversion = useConversion()
   const updater = useUpdater()
+  const player = usePlayer()
+
+  const openFiles = async () => {
+    const selected = await openDialog({
+      multiple: true,
+      filters: [{ name: 'Audio', extensions: ['wav','mp3','flac','opus','ogg','m4a','aac','wma','aif','aiff','sgmca','trm','ftr','bwf'] }],
+    })
+    if (!selected) return
+    const paths = Array.isArray(selected) ? selected : [selected]
+    const files = paths.map(p => ({ path: p, name: p.split(/[\/]/).pop() }))
+    player.playAll(files)
+  }
 
   // Library state
   const [cases, setCases]     = useState([])
@@ -75,6 +91,11 @@ export default function App() {
           </button>
         </nav>
         <div className="topbar-right">
+          <button className="topbar-open-btn" title="Open audio files" onClick={openFiles} aria-label="Open audio files for playback">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M2 3h4l1.5 1.5H12a1 1 0 0 1 1 1V11a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" stroke="currentColor" strokeWidth="1.2"/>
+            </svg>
+          </button>
           <button className="theme-btn" title={`Theme: ${themePref}`} onClick={cycleTheme} aria-label={`Switch theme, currently ${themePref}`}>{themeLabel}</button>
         </div>
       </header>
@@ -85,6 +106,7 @@ export default function App() {
           fileDrop={fileDrop}
           conversion={conversion}
           startConversion={handleStartConversion}
+          player={player}
         />
       )}
 
@@ -93,6 +115,7 @@ export default function App() {
           cases={cases} setCases={setCases}
           search={libSearch} setSearch={setLibSearch}
           labels={prefs.labels}
+          player={player}
           onReexport={(srcPath, srcCaseName) => {
             fileDrop.setFiles([{path:srcPath, name:basename(srcPath), fmt:null}])
             fileDrop.setCaseName(srcCaseName || '')
@@ -100,6 +123,15 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Global audio element */}
+      <audio ref={player.audioRef} preload="metadata" {...player.handlers} />
+
+      {/* Queue panel (slides up above player bar) */}
+      <QueuePanel player={player} />
+
+      {/* Persistent player bar */}
+      <PlayerBar player={player} />
     </div>
   )
 }

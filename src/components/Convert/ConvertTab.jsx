@@ -5,7 +5,7 @@ import { ModeIcon, WaveformIcon } from '../common/Icons'
 import FormatTable from './FormatTable'
 import FileRow from './FileRow'
 
-export default function ConvertTab({ prefs, fileDrop, conversion, startConversion }) {
+export default function ConvertTab({ prefs, fileDrop, conversion, startConversion, player }) {
   const {
     mode, setMode, formatOut, setFormatOut, labels, setLabels,
     chanVols, setChanVols, outDir, setOutDir, rate, setRate,
@@ -209,7 +209,7 @@ export default function ConvertTab({ prefs, fileDrop, conversion, startConversio
                 {!converting && <button className="ghost-btn" onClick={() => clearAll(converting)}>Clear all</button>}
               </div>
               <div className="filelist" role="list" aria-label="Queued files">
-                {files.map(f => <FileRow key={f.path} file={f} job={jobs[f.path]} onRemove={() => removeFile(f.path, converting)} converting={converting} />)}
+                {files.map(f => <FileRow key={f.path} file={f} job={jobs[f.path]} onRemove={() => removeFile(f.path, converting)} converting={converting} player={player} />)}
               </div>
             </div>
           )}

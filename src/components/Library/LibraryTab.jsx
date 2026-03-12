@@ -4,7 +4,7 @@ import { CH_COLORS } from '../../constants'
 import LibraryFile from './LibraryFile'
 import ImportModal from './ImportModal'
 
-export default function LibraryTab({ cases, setCases, search, setSearch, labels, onReexport }) {
+export default function LibraryTab({ cases, setCases, search, setSearch, labels, player, onReexport }) {
   const [showArchived, setShowArchived] = useState(false)
   const [expandedCases, setExpandedCases]   = useState({})
   const [editingCase, setEditingCase]       = useState(null)
@@ -121,6 +121,10 @@ export default function LibraryTab({ cases, setCases, search, setSearch, labels,
                       <span className="lib-session-date">{s.date}</span>
                       <span className="lib-session-src" title={s.sourceFile}>{s.sourceName}</span>
                       <div className="lib-session-actions">
+                        <button className="lib-action-btn" title="Play all files in session" onClick={() => {
+                          const allFiles = s.participants.flatMap(p => p.files.map(f => ({ path: f.path, name: f.path.split(/[\\/]/).pop(), format: f.format, size: f.size })))
+                          if (player && allFiles.length) player.playAll(allFiles)
+                        }} aria-label="Play all files in this session">▶</button>
                         <button className="lib-action-btn" title="Re-export source" onClick={() => onReexport(s.sourceFile, c.name)}>⟳ Re-export</button>
                         <button className="lib-action-btn lib-action-btn--del" title="Remove session" onClick={() => deleteSession(c.id, s.id)}>✕</button>
                       </div>
@@ -131,7 +135,7 @@ export default function LibraryTab({ cases, setCases, search, setSearch, labels,
                           <span className="lib-participant-dot" style={{background: CH_COLORS[pi%4]}} />
                           <span className="lib-participant-label">{p.label}</span>
                           <div className="lib-participant-files">
-                            {p.files.map((f, fi) => <LibraryFile key={fi} file={f} />)}
+                            {p.files.map((f, fi) => <LibraryFile key={fi} file={f} player={player} />)}
                           </div>
                         </div>
                       ))}

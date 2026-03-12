@@ -4,7 +4,7 @@ import { CH_COLORS } from '../../constants'
 import StatusChip from '../common/StatusChip'
 import MiniPlayer from './MiniPlayer'
 
-export default function FileRow({ file, job, onRemove, converting }) {
+export default function FileRow({ file, job, onRemove, converting, player }) {
   const [expanded, setExpanded] = useState(false)
   const status = job?.status || 'waiting'
   const isExp = file.fmt?.status === 'experimental'
@@ -40,7 +40,7 @@ export default function FileRow({ file, job, onRemove, converting }) {
       )}
       {status === 'done' && job.outputs?.length > 0 && (
         <div className="fr-outputs">
-          {job.outputs.map((out, i) => <MiniPlayer key={i} out={out} color={CH_COLORS[i%4]} multi={job.outputs.length > 1} />)}
+          {job.outputs.map((out, i) => <MiniPlayer key={i} out={out} color={CH_COLORS[i%4]} multi={job.outputs.length > 1} player={player} />)}
           {job.outputs.length > 1 && (
             <button className="show-folder-btn"
               onClick={() => invoke('show_in_folder', { path: job.outputs[0].path }).catch(() => {})}>
