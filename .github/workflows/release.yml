@@ -14,13 +14,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-latest    # Apple Silicon (arm64) — native arm64 runner
+          - platform: macos-latest
             args: '--target aarch64-apple-darwin'
             rust-target: aarch64-apple-darwin
-          - platform: macos-13        # Intel Mac (x86_64) — native x86_64 runner
+          - platform: macos-13
             args: '--target x86_64-apple-darwin'
             rust-target: x86_64-apple-darwin
-          - platform: windows-latest  # Windows x64
+          - platform: windows-latest
             args: ''
             rust-target: x86_64-pc-windows-msvc
 
@@ -48,15 +48,8 @@ jobs:
       - name: Install frontend deps
         run: npm ci
 
-      # ── Create binaries directory (must exist before FFmpeg steps) ─────────
       - name: Create binaries directory
         run: mkdir -p src-tauri/binaries
-
-      # ── Place FFmpeg sidecars ──────────────────────────────────────────────
-      # Tauri sidecar convention: binaries/ffmpeg-<target-triple>[.exe]
-      #
-      # macOS:   brew install on native runners (arm64 on macos-latest, x86_64 on macos-13)
-      # Windows: static GPL build from BtbN/FFmpeg-Builds
 
       - name: Install FFmpeg (macOS)
         if: runner.os == 'macOS'
@@ -80,7 +73,6 @@ jobs:
           Copy-Item $bin.FullName   src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe
           Copy-Item $probe.FullName src-tauri/binaries/ffprobe-x86_64-pc-windows-msvc.exe
 
-      # ── Verify sidecars were placed ────────────────────────────────────────
       - name: Verify FFmpeg sidecars (Unix)
         if: runner.os != 'Windows'
         run: |
@@ -93,21 +85,16 @@ jobs:
         shell: pwsh
         run: Get-ChildItem src-tauri/binaries/
 
+      # ── Disable macOS signing when no certificate is configured ────────────
+      - name: Disable macOS code signing (unsigned build)
+        if: runner.os == 'macOS'
+        run: echo "APPLE_SIGNING_IDENTITY=-" >> $GITHUB_ENV
+
       # ── Build & release ────────────────────────────────────────────────────
       - name: Build and release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS signing — set repo secrets for notarized builds
-          APPLE_CERTIFICATE:          ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY:     ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID:                   ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD:             ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID:              ${{ secrets.APPLE_TEAM_ID }}
-          # Tauri updater signing
-          TAURI_SIGNING_PRIVATE_KEY:          ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           tagName:      ${{ github.ref_name }}
           releaseName:  'DepoAudio ${{ github.ref_name }}'
