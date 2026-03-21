@@ -9,10 +9,13 @@ DepoAudio converts proprietary court recording formats into standard audio files
 - **Format Support** — Stenograph SGMCA, FTR/TRM, Broadcast WAV, DigitalCAT, plus standard formats (WAV, MP3, FLAC, M4A, OGG, Opus, WMA, and more)
 - **Three Output Modes** — Mix to Stereo, Keep Original, or Split by Channel
 - **Per-Channel Controls** — Label and volume-adjust each channel (Reporter, Witness, Attorney 1 & 2)
+- **Track Preview** — Audition individual channels and the final stereo mix before converting
+- **Processing Preview** — Hear the effect of filters and normalization before committing
 - **Processing Chain** — High-pass filter (80 Hz), loudness normalization (–16 LUFS), silence trimming, fade in/out
 - **Output Formats** — WAV (PCM 16-bit), MP3 (192 kbps), FLAC, Opus (64 kbps VBR)
 - **Case Library** — Auto-filed by case name with inline playback, search, archive, and re-export
-- **Batch Processing** — Queue and convert multiple files at once
+- **Global Audio Player** — Persistent playback bar with queue support across views
+- **Batch Processing** — Queue and convert multiple files at once; cancel any time with automatic cleanup
 - **Auto-Updates** — In-app update notifications powered by GitHub Releases
 - **Dark & Light Themes** — System-aware with manual override
 
@@ -29,21 +32,21 @@ DepoAudio converts proprietary court recording formats into standard audio files
 
 ## Installation
 
-Download the latest release for your platform:
+Download the latest preview release for your platform:
 
 - **macOS** — `.dmg` (Apple Silicon and Intel)
 - **Windows** — `.msi` installer or `.exe`
 
 > [Latest Release](https://github.com/mayes/depo-audio/releases/latest)
 
-**Note:** macOS builds are currently unsigned. On first launch, right-click the app and select "Open" to bypass Gatekeeper.
+**Note:** Preview builds are not code-signed yet. You'll need to bypass Gatekeeper on macOS or SmartScreen on Windows on first launch. See the [installation guide](https://depoaudio.com/install) for step-by-step instructions.
 
 ## Development Setup
 
 ### Prerequisites
 
 - [Rust](https://rustup.rs/) (stable toolchain)
-- [Node.js](https://nodejs.org/) 20+
+- [Node.js](https://nodejs.org/) 22+
 - [Tauri CLI](https://v2.tauri.app/start/prerequisites/) (`cargo install tauri-cli`)
 
 ### FFmpeg Sidecars
@@ -92,7 +95,7 @@ DepoAudio
 └── .github/workflows/    # CI/CD (release builds)
 ```
 
-**Stack:** Tauri 2 · Rust · React 18 · Vite · FFmpeg
+**Stack:** Tauri 2 · Rust · React 19 · Vite 8 · FFmpeg
 
 ## Releasing
 

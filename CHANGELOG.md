@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.4.0] - 2026-03-12
+
+### Added
+- **Track preview** — audition individual channels before conversion for quick identification (Reporter, Witness, Attorney 1 & 2)
+- **Mix audition** — preview the final stereo mix with per-channel volume and processing applied
+- **Processing preview** — hear the effect of high-pass filter, normalization, and silence trimming before committing
+- **Cancel conversion** — stop an in-progress conversion at any time; partially written files are cleaned up automatically
+- **Atomic file writes** — output files are written to a temporary path first, then moved into place, preventing corrupted files on crash or cancel
+- **Global audio player** — persistent playback bar with queue support across Convert and Library views
+- **React error boundary** — catches unhandled UI crashes and offers a recovery button instead of a blank screen
+- Dependabot configuration for automated dependency updates
+- MIT LICENSE file and CODEOWNERS
+
+### Changed
+- Upgraded React 18 → 19 and react-dom to 19.2.4
+- Upgraded Vite 7 → 8 (Rolldown-based bundler)
+- Upgraded @vitejs/plugin-react 4 → 6 (Babel removed, Oxc-based transforms)
+- Updated Cargo dependencies including tauri-plugin-updater to 2.10.0
+- Updated CI actions (actions/checkout v6, actions/setup-node v6)
+- Improved conversion progress UI with smoother status updates
+
+### Security
+- Bumped `tar` crate 0.4.44 → 0.4.45 (fixes symlink-directory collision chmod attack)
+- Bumped `rustls-webpki` 0.103.9 → 0.103.10
+
 ## [0.3.0] - 2026-03-12
 
 ### Added
