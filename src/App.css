@@ -169,6 +169,10 @@ body{
 .fr--done{border-color:rgba(58,158,106,.4)}
 .fr--error{border-color:rgba(196,78,78,.4)}
 .fr--rejected{opacity:.6}
+.fr--guidance{border-color:rgba(74,143,223,.35);opacity:.75}
+.fr-guidance{display:flex;align-items:flex-start;gap:8px;padding:8px 14px;background:rgba(74,143,223,.06);border-top:1px solid rgba(74,143,223,.12)}
+.guidance-icon{color:var(--blue);font-size:12px;flex-shrink:0;line-height:1.5}
+.guidance-text{font-size:11px;color:var(--blue);line-height:1.5}
 .fr-main{display:flex;align-items:center;gap:12px;padding:10px 14px}
 .fr-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .fr-top{display:flex;align-items:center;gap:8px;min-width:0}
@@ -189,9 +193,11 @@ body{
 .fi--done{color:var(--green)}
 .fi--error{color:var(--red)}
 .fi--bad{color:var(--red);opacity:.5}
-.fr-progress{padding:0 14px 10px}
-.progress-track{height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.fr-progress{padding:0 14px 10px;display:flex;align-items:center;gap:8px}
+.progress-track{height:3px;background:var(--border);border-radius:2px;overflow:hidden;flex:1}
 .progress-fill{height:100%;background:var(--gold);border-radius:2px;animation:progressPulse 1.2s ease-in-out infinite}
+.progress-fill--real{animation:none;transition:width .3s ease}
+.progress-pct{font-family:'DM Mono',monospace;font-size:9px;color:var(--gold);min-width:28px;text-align:right}
 @keyframes progressPulse{0%{width:10%;opacity:.7}50%{width:75%;opacity:1}100%{width:10%;opacity:.7}}
 
 /* ── Output rows / mini player ──────────────────────────────────────────────── */
@@ -222,6 +228,7 @@ body{
 .fmttable-status{font-family:'DM Mono',monospace;font-size:10px;font-weight:600;text-align:right}
 .fmttable-status--supported{color:var(--green)}
 .fmttable-status--experimental{color:var(--amber)}
+.fmttable-status--guidance{color:var(--blue)}
 .fmttable-status--unsupported{color:var(--red)}
 .fmttable-note{padding:8px 16px 10px;font-size:11px;color:var(--sub);border-top:1px solid var(--border2);background:var(--panel2)}
 .fmttable-note code{font-family:'DM Mono',monospace;font-size:10px;color:var(--text2)}
@@ -235,6 +242,8 @@ body{
 
 /* ── Error ──────────────────────────────────────────────────────────────────── */
 .fr-error{padding:6px 14px 10px;border-top:1px solid rgba(196,78,78,.2)}
+.retry-btn{font-size:10px;font-weight:600;color:var(--gold);padding:2px 8px;border-radius:4px;background:var(--gold-dim);transition:background .1s}
+.retry-btn:hover{background:rgba(196,154,54,.22)}
 .err-toggle{font-size:10px;color:var(--sub);transition:color .1s}
 .err-toggle:hover{color:var(--red)}
 .err-text{margin-top:6px;padding:8px 10px;font-size:10px;line-height:1.5;font-family:'DM Mono',monospace;color:var(--red);background:rgba(196,78,78,.05);border-radius:4px;white-space:pre-wrap;word-break:break-word}

@@ -31,6 +31,8 @@ pub fn run() {
             commands::library_import_file,
             commands::prefs_get,
             commands::prefs_set,
+            commands::probe_duration_cmd,
+            commands::probe_channels_cmd,
             commands::generate_preview,
             commands::cleanup_previews,
         ])

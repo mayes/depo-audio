@@ -13,7 +13,7 @@ pub(crate) async fn do_convert(app: &AppHandle, job: &ConvertJob) -> Result<Vec<
     let fmt = detect_format_for_path(&job.src_path)
         .ok_or("Unrecognised file format")?;
 
-    if fmt.handler == "rejected" {
+    if fmt.handler == "rejected" || fmt.handler == "guidance" {
         return Err(fmt.note.unwrap_or_else(|| "This format cannot be converted.".into()));
     }
 
@@ -47,7 +47,7 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
     };
 
     let ext = output_ext(&job.format);
-    let out_codec = output_args(&job.format, &job.rate);
+    let out_codec = output_args(&job.format, &job.rate, job.mp3_bitrate.as_deref());
     let proc_opts = crate::ffmpeg::ProcOpts::from(job);
     let proc = build_proc_filters(app, &proc_opts, feed, &input_codec).await;
 
@@ -59,13 +59,15 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
     match job.mode.as_str() {
         "stereo" => {
             let dst = unique_path(&out_dir.join(format!("{}{}", base, ext)));
+            let num_ch = probe_channels(app, feed, &input_codec).await;
             let vols = &job.chan_vols;
-            let weights: Vec<String> = (0..4).map(|i| {
-                let v = vols.get(i).copied().unwrap_or(1.0) * 0.25;
+            let weight_factor = 1.0 / num_ch as f64;
+            let weights: Vec<String> = (0..num_ch).map(|i| {
+                let v = vols.get(i as usize).copied().unwrap_or(1.0) * weight_factor;
                 format!("{:.4}*c{}", v, i)
             }).collect();
             let mix = weights.join("+");
-            let pan = format!("pan=stereo|c0={}|c1={},volume=4.0", mix, mix);
+            let pan = format!("pan=stereo|c0={}|c1={},volume={}.0", mix, mix, num_ch);
             let all: Vec<String> = std::iter::once(pan).chain(proc.into_iter()).collect();
             let mut args = ffmpeg_args.clone();
             args.extend(["-af".into(), all.join(",")]);

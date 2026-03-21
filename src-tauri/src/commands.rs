@@ -176,6 +176,30 @@ pub fn show_in_folder(app: AppHandle, path: String) -> Result<(), String> {
 }
 
 
+// ── Probe commands ───────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn probe_duration_cmd(app: AppHandle, path: String) -> Option<f64> {
+    let fmt = detect_format_for_path(&path);
+    let input_codec: Vec<String> = match fmt.as_ref().map(|f| f.handler.as_str()) {
+        Some("ftr") => vec!["-acodec".into(), "aac".into()],
+        _ => vec![],
+    };
+    let feed = std::path::Path::new(&path);
+    crate::ffmpeg::probe_duration(&app, feed, &input_codec).await
+}
+
+#[tauri::command]
+pub async fn probe_channels_cmd(app: AppHandle, path: String) -> u32 {
+    let fmt = detect_format_for_path(&path);
+    let input_codec: Vec<String> = match fmt.as_ref().map(|f| f.handler.as_str()) {
+        Some("ftr") => vec!["-acodec".into(), "aac".into()],
+        _ => vec![],
+    };
+    let feed = std::path::Path::new(&path);
+    crate::ffmpeg::probe_channels(&app, feed, &input_codec).await
+}
+
 // ── Preview commands ──────────────────────────────────────────────────────────
 
 #[tauri::command]

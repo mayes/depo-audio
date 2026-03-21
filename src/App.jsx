@@ -34,7 +34,7 @@ export default function App() {
   const openFiles = async () => {
     const selected = await openDialog({
       multiple: true,
-      filters: [{ name: 'Audio', extensions: ['wav','mp3','flac','opus','ogg','m4a','aac','wma','aif','aiff','sgmca','trm','ftr','bwf'] }],
+      filters: [{ name: 'Audio', extensions: ['wav','mp3','flac','opus','ogg','m4a','aac','wma','aif','aiff','sgmca','trm','ftr','bwf','dcr'] }],
     })
     if (!selected) return
     const paths = Array.isArray(selected) ? selected : [selected]
@@ -58,13 +58,20 @@ export default function App() {
     }
   }, [tab])
 
+  // Auto-resize channel labels/volumes when file channel counts change
+  useEffect(() => {
+    if (!fileDrop.files.length) return
+    const maxCh = Math.max(...fileDrop.files.map(f => f.channels || 4))
+    prefs.resizeForChannels(maxCh)
+  }, [fileDrop.files])
+
   const handleStartConversion = () => {
     conversion.startConversion({
       files: fileDrop.files, outDir: prefs.outDir, mode: prefs.mode,
       formatOut: prefs.formatOut, rate: prefs.rate,
       labels: prefs.labels, chanVols: prefs.chanVols,
       normalize: prefs.normalize, trim: prefs.trim,
-      fade: prefs.fade, fadeDur: prefs.fadeDur, hpf: prefs.hpf,
+      fade: prefs.fade, fadeDur: prefs.fadeDur, hpf: prefs.hpf, mp3Bitrate: prefs.mp3Bitrate,
       caseName: fileDrop.caseName, setCases,
     })
   }

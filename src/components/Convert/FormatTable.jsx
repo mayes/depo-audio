@@ -17,7 +17,7 @@ export default function FormatTable() {
               <span className="fmttable-vendor">{r.vendor}</span>
               <span className="fmttable-ch">{r.ch}</span>
               <span className={`fmttable-status fmttable-status--${r.status}`}>
-                {r.status === 'supported' ? '● Supported' : r.status === 'experimental' ? '◐ Experimental' : '✕ Cannot convert'}
+                {r.status === 'supported' ? '● Supported' : r.status === 'experimental' ? '◐ Experimental' : r.status === 'guidance' ? 'ℹ Export first' : '✕ Cannot convert'}
               </span>
             </div>
           ))}

@@ -12,14 +12,14 @@ export default function ConvertTab({ prefs, fileDrop, conversion, startConversio
     mode, setMode, formatOut, setFormatOut, labels, setLabels,
     chanVols, setChanVols, outDir, setOutDir, rate, setRate,
     normalize, setNormalize, trim, setTrim, fade, setFade,
-    fadeDur, setFadeDur, hpf, setHpf,
+    fadeDur, setFadeDur, hpf, setHpf, mp3Bitrate, setMp3Bitrate,
   } = prefs
   const {
     files, dragOver, caseName, setCaseName,
     onDragOver, onDragLeave, onDrop, browseFiles, browseOutDir,
     removeFile, clearAll,
   } = fileDrop
-  const { jobs, converting, doneCount, failCount, cancelConversion } = conversion
+  const { jobs, converting, doneCount, failCount, cancelConversion, retryFile } = conversion
 
   const anyProc = normalize || trim || fade || hpf
 
@@ -27,6 +27,30 @@ export default function ConvertTab({ prefs, fileDrop, conversion, startConversio
     <>
       <div className="main-scroll">
         <div className="content">
+
+          {/* Drop zone */}
+          <div className={`dropzone${dragOver?' dropzone--over':''}`}
+            onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
+            onClick={browseFiles} role="button" tabIndex={0} aria-label="Drop audio files here or click to browse">
+            <WaveformIcon />
+            <p className="drop-title">Drop audio files here</p>
+            <p className="drop-sub">or <span className="drop-link">click to browse</span> — SGMCA · TRM · BWF · WAV · MP3 · FLAC · Opus and more</p>
+          </div>
+
+          {files.length > 0 && (
+            <div className="filelist-wrap">
+              <div className="filelist-head">
+                <span className="filelist-count">{files.length} file{files.length!==1?'s':''} queued</span>
+                {!converting && <button className="ghost-btn" onClick={() => clearAll(converting)}>Clear all</button>}
+              </div>
+              <div className="filelist" role="list" aria-label="Queued files">
+                {files.map(f => <FileRow key={f.path} file={f} job={jobs[f.path]}
+                  onRemove={() => removeFile(f.path, converting)}
+                  onRetry={(file) => retryFile(file, { outDir, mode, formatOut, rate, labels, chanVols, normalize, trim, fade, fadeDur, hpf, mp3Bitrate, caseName })}
+                  converting={converting} player={player} />)}
+              </div>
+            </div>
+          )}
 
           {/* ── OUTPUT MODE ──────────────────────────────────────────────── */}
           <section className="panel" aria-label="Output mode">
@@ -59,7 +83,7 @@ export default function ConvertTab({ prefs, fileDrop, conversion, startConversio
             <div className="ch-grid">
               {labels.map((l,i) => (
                 <div key={i} className="ch-item">
-                  <span className="ch-dot" style={{background:CH_COLORS[i]}} />
+                  <span className="ch-dot" style={{background:CH_COLORS[i%CH_COLORS.length]}} />
                   <span className="ch-num">CH {i+1}</span>
                   <input className="ch-input" value={l} maxLength={24} placeholder={`Channel ${i+1}`}
                     aria-label={`Channel ${i+1} label`}
@@ -68,7 +92,7 @@ export default function ConvertTab({ prefs, fileDrop, conversion, startConversio
                     disabled={!files.length}
                     loading={preview.cache[cacheKey({srcPath:files[0]?.path,previewType:'channel',channel:i,startSec:30,duration:15})]?.status==='loading'}
                     playing={preview.activeKey===cacheKey({srcPath:files[0]?.path,previewType:'channel',channel:i,startSec:30,duration:15})}
-                    color={CH_COLORS[i]}
+                    color={CH_COLORS[i%CH_COLORS.length]}
                     onClick={() => preview.generateAndPlay({srcPath:files[0]?.path,previewType:'channel',channel:i,startSec:30,duration:15})}
                   />
                 </div>
@@ -96,7 +120,7 @@ export default function ConvertTab({ prefs, fileDrop, conversion, startConversio
             <div className="chan-vols-grid">
               {chanVols.map((v,i) => (
                 <div key={i} className={`chan-vol-item${mode !== 'stereo' ? ' chan-vol-item--dim' : ''}`}>
-                  <span className="chan-vol-dot" style={{background:CH_COLORS[i]}} />
+                  <span className="chan-vol-dot" style={{background:CH_COLORS[i%CH_COLORS.length]}} />
                   <span className="chan-vol-name">{labels[i]||`CH ${i+1}`}</span>
                   <input type="range" min="0" max="2" step="0.05" value={v} className="chan-vol-slider"
                     style={{'--fill':`${(v/2)*100}%`}}
@@ -212,30 +236,20 @@ export default function ConvertTab({ prefs, fileDrop, conversion, startConversio
                 ))}
               </div>
             </div>
+            {formatOut === 'mp3' && (
+              <div className="opt-block">
+                <label className="opt-label" htmlFor="mp3-bitrate">BITRATE</label>
+                <select id="mp3-bitrate" className="opt-select" value={mp3Bitrate} onChange={e => setMp3Bitrate(e.target.value)}>
+                  <option value="128k">128 kbps</option>
+                  <option value="192k">192 kbps</option>
+                  <option value="256k">256 kbps</option>
+                  <option value="320k">320 kbps</option>
+                </select>
+              </div>
+            )}
           </div>
 
           <FormatTable />
-
-          {/* Drop zone */}
-          <div className={`dropzone${dragOver?' dropzone--over':''}`}
-            onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
-            onClick={browseFiles} role="button" tabIndex={0} aria-label="Drop audio files here or click to browse">
-            <WaveformIcon />
-            <p className="drop-title">Drop audio files here</p>
-            <p className="drop-sub">or <span className="drop-link">click to browse</span> — SGMCA · TRM · BWF · WAV · MP3 · FLAC · Opus and more</p>
-          </div>
-
-          {files.length > 0 && (
-            <div className="filelist-wrap">
-              <div className="filelist-head">
-                <span className="filelist-count">{files.length} file{files.length!==1?'s':''} queued</span>
-                {!converting && <button className="ghost-btn" onClick={() => clearAll(converting)}>Clear all</button>}
-              </div>
-              <div className="filelist" role="list" aria-label="Queued files">
-                {files.map(f => <FileRow key={f.path} file={f} job={jobs[f.path]} onRemove={() => removeFile(f.path, converting)} converting={converting} player={player} />)}
-              </div>
-            </div>
-          )}
 
         </div>
       </div>

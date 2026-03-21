@@ -33,6 +33,7 @@ pub struct ConvertJob {
     pub fade_dur: f64,
     pub hpf: bool,
     pub case_name: Option<String>,
+    pub mp3_bitrate: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -126,6 +127,7 @@ pub struct Prefs {
     pub fade: bool,
     pub fade_dur: f64,
     pub hpf: bool,
+    pub mp3_bitrate: Option<String>,
 }
 
 impl Default for Prefs {
@@ -143,6 +145,7 @@ impl Default for Prefs {
             fade: false,
             fade_dur: 0.5,
             hpf: false,
+            mp3_bitrate: Some("192k".into()),
         }
     }
 }
