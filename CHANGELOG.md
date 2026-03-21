@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.5.0] - 2026-03-21
+
+### Added
+- **AAC/M4A output format** — 128 kbps AAC in M4A container for Apple device compatibility
+- **Configurable MP3 bitrate** — choose 128, 192, 256, or 320 kbps from the format selector
+- **.dcr format detection** — Liberty Court Recorder files are identified with guidance to export via Liberty software
+- **Dynamic channel count** — auto-detects 4–16 channel recordings and resizes the UI accordingly
+- **Retry button** — failed conversions show a retry action instead of requiring re-import
+- **Extended channel palette** — 16 distinct colors for multi-channel recordings (up from 4)
+
+### Changed
+- Drop zone moved above configuration panels for a more natural top-down workflow
+- Progress bar now shows real percentage derived from FFmpeg duration probe
+- Stereo mix uses actual detected channel count instead of hardcoded 4
+
+### Fixed
+- Vite 8 build — switched minifier from deprecated esbuild to oxc
+
 ## [0.4.0] - 2026-03-12
 
 ### Added
