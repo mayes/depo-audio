@@ -458,3 +458,33 @@ body{
 .tooltip-arrow{fill:var(--text)}
 [data-theme="light"] .tooltip-content{background:#1a2030;color:#f5f0e8}
 [data-theme="light"] .tooltip-arrow{fill:#1a2030}
+
+/* ── Merge Tab ────────────────────────────────────────────────────────────── */
+.merge-empty{border:2px dashed var(--border);border-radius:var(--r);padding:32px;text-align:center;cursor:pointer;transition:border-color .15s}
+.merge-empty:hover{border-color:var(--gold)}
+.merge-empty-title{font-size:14px;color:var(--text2);margin-bottom:4px}
+.merge-empty-sub{font-size:12px;color:var(--sub)}
+.merge-sources{display:flex;flex-direction:column;gap:3px}
+.merge-source-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;transition:background .1s}
+.merge-source-row:hover{background:var(--panel2)}
+.merge-source-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.merge-source-num{font-family:'DM Mono',monospace;font-size:10px;color:var(--sub);min-width:65px}
+.merge-source-name{flex:1;font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.merge-sync-badge{font-family:'DM Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px;flex-shrink:0}
+.merge-sync-badge--ok{background:rgba(58,158,106,.12);color:var(--green)}
+.merge-sync-badge--warn{background:rgba(196,78,78,.12);color:var(--red)}
+.merge-source-remove{color:var(--sub);opacity:0;transition:opacity .1s,color .1s;flex-shrink:0}
+.merge-source-row:hover .merge-source-remove{opacity:1}
+.merge-source-remove:hover{color:var(--red)}
+.merge-strategy{display:flex;flex-direction:column;gap:4px}
+.merge-strategy-option{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:6px;cursor:pointer;transition:background .1s}
+.merge-strategy-option:hover{background:var(--panel2)}
+.merge-strategy-option input[type="radio"]{margin-top:3px;accent-color:var(--gold)}
+.merge-strategy-name{font-size:13px;font-weight:600;color:var(--text);display:block}
+.merge-strategy-desc{font-size:11px;color:var(--text2);display:block;margin-top:2px}
+.merge-result{border-color:var(--green)}
+.merge-result-info{display:flex;flex-direction:column;gap:4px}
+.merge-result-name{font-size:14px;font-weight:600;color:var(--text)}
+.merge-result-meta{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)}
+.merge-result-offsets{font-family:'DM Mono',monospace;font-size:10px;color:var(--sub)}
+.merge-error{font-size:12px;color:var(--red);padding:8px 12px;background:rgba(196,78,78,.08);border-radius:6px;margin:8px 0}

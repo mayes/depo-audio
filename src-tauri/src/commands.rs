@@ -9,6 +9,7 @@ use uuid::Uuid;
 use crate::analysis;
 use crate::catdetect;
 use crate::conversion::do_convert;
+use crate::merge;
 use crate::vad;
 use crate::helpers::{detect_format_for_path, get_formats, infer_case_name};
 use crate::models;
@@ -98,6 +99,25 @@ pub fn detect_cat_software_cmd() -> Vec<catdetect::CatSoftware> {
 #[tauri::command]
 pub fn scan_cat_jobs_cmd(path: String) -> Vec<catdetect::CatJob> {
     catdetect::scan_cat_jobs(&path)
+}
+
+// ── Merge commands ───────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn detect_sync_cmd(
+    app: AppHandle,
+    source_a: String,
+    source_b: String,
+) -> Result<merge::SyncResult, String> {
+    merge::detect_sync(&app, &source_a, &source_b).await
+}
+
+#[tauri::command]
+pub async fn merge_audio_cmd(
+    app: AppHandle,
+    job: merge::MergeJob,
+) -> Result<merge::MergeResult, String> {
+    merge::merge_audio(&app, &job).await
 }
 
 // ── Convert command ───────────────────────────────────────────────────────────

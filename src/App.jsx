@@ -12,6 +12,7 @@ import { LogoSvg } from './components/common/Icons'
 import ConvertTab from './components/Convert/ConvertTab'
 import LibraryTab from './components/Library/LibraryTab'
 import PlayerTab from './components/Player/PlayerTab'
+import MergeTab from './components/Merge/MergeTab'
 
 export default function App() {
   const [tab, setTab] = useState('convert')
@@ -80,6 +81,7 @@ export default function App() {
         <Tabs.List className="topbar-tabs" aria-label="Main navigation">
           <Tabs.Trigger value="convert" className="tab-btn">Convert</Tabs.Trigger>
           <Tabs.Trigger value="player" className="tab-btn">Player</Tabs.Trigger>
+          <Tabs.Trigger value="merge" className="tab-btn">Merge</Tabs.Trigger>
           <Tabs.Trigger value="library" className="tab-btn">
             Library {cases.filter(c=>!c.archived).length > 0 && <span className="tab-badge">{cases.filter(c=>!c.archived).length}</span>}
           </Tabs.Trigger>
@@ -124,6 +126,10 @@ export default function App() {
 
       <Tabs.Content value="player" className="tab-content">
         <PlayerTab />
+      </Tabs.Content>
+
+      <Tabs.Content value="merge" className="tab-content">
+        <MergeTab />
       </Tabs.Content>
 
       <Tabs.Content value="library" className="tab-content">

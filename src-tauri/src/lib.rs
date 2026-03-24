@@ -2,6 +2,7 @@ mod analysis;
 mod catdetect;
 mod commands;
 mod dereverb;
+mod merge;
 mod conversion;
 mod denoise;
 mod enhance;
@@ -37,6 +38,8 @@ pub fn run() {
             commands::detect_speech_cmd,
             commands::detect_cat_software_cmd,
             commands::scan_cat_jobs_cmd,
+            commands::detect_sync_cmd,
+            commands::merge_audio_cmd,
             commands::convert,
             commands::show_in_folder,
             commands::library_get,

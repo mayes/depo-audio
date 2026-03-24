@@ -63,8 +63,12 @@ pub struct SystemCapabilities {
     pub cpu_cores: usize,
     /// Available RAM in MB.
     pub ram_mb: u64,
-    /// Whether the system is Apple Silicon (fast ONNX inference).
+    /// Whether the system is Apple Silicon (CoreML acceleration).
     pub apple_silicon: bool,
+    /// Detected accelerator: "cpu", "coreml", "directml", "rocm", "xdna", "openvino".
+    pub accelerator: String,
+    /// Human-readable accelerator description.
+    pub accelerator_desc: String,
     /// Recommended denoise quality ("fast" or "best").
     pub recommended_denoise: String,
     /// Whether speaker detection is recommended (needs 38MB model + RAM).
@@ -87,8 +91,12 @@ pub(crate) fn detect_capabilities(app: &AppHandle) -> SystemCapabilities {
     // Detect Apple Silicon
     let apple_silicon = cfg!(target_arch = "aarch64") && cfg!(target_os = "macos");
 
-    // Performance tier
-    let tier = if cpu_cores >= 8 && ram_mb >= 8000 {
+    // Detect available hardware accelerator
+    let (accelerator, accelerator_desc) = detect_accelerator(apple_silicon);
+
+    // Performance tier — accelerators boost the tier
+    let has_accel = accelerator != "cpu";
+    let tier = if has_accel || (cpu_cores >= 8 && ram_mb >= 8000) {
         "high"
     } else if cpu_cores >= 4 && ram_mb >= 4000 {
         "mid"
@@ -97,7 +105,7 @@ pub(crate) fn detect_capabilities(app: &AppHandle) -> SystemCapabilities {
     };
 
     // Recommendations based on tier
-    let recommended_denoise = if tier == "high" || apple_silicon {
+    let recommended_denoise = if tier == "high" {
         "best" // DeepFilterNet3
     } else {
         "fast" // RNNoise
@@ -112,11 +120,67 @@ pub(crate) fn detect_capabilities(app: &AppHandle) -> SystemCapabilities {
         cpu_cores,
         ram_mb,
         apple_silicon,
+        accelerator: accelerator.into(),
+        accelerator_desc: accelerator_desc.into(),
         recommended_denoise: recommended_denoise.into(),
         recommend_speaker_detection,
         recommend_enhance,
         tier: tier.into(),
     }
+}
+
+/// Detect available hardware accelerator for AI inference.
+/// Returns (id, human description).
+fn detect_accelerator(apple_silicon: bool) -> (&'static str, &'static str) {
+    // Apple Silicon: CoreML via ANE (Apple Neural Engine)
+    if apple_silicon {
+        return ("coreml", "Apple Neural Engine (CoreML)");
+    }
+
+    // Windows: check for DirectML (AMD/Intel/NVIDIA GPUs) and Intel OpenVINO
+    #[cfg(target_os = "windows")]
+    {
+        // Check for AMD XDNA NPU (Ryzen AI)
+        // The XDNA driver creates a device at a known path
+        if std::path::Path::new("C:\\Windows\\System32\\DriverStore\\FileRepository").exists() {
+            // Heuristic: check for AMD IPU driver
+            if let Ok(entries) = std::fs::read_dir("C:\\Windows\\System32\\drivers") {
+                for entry in entries.flatten() {
+                    let name = entry.file_name().to_string_lossy().to_lowercase();
+                    if name.contains("xdna") || name.contains("amdxdna") || name.contains("aie") {
+                        return ("xdna", "AMD Ryzen AI (XDNA NPU)");
+                    }
+                }
+            }
+
+            // Check for Intel NPU (Meteor Lake+)
+            if let Ok(entries) = std::fs::read_dir("C:\\Windows\\System32\\drivers") {
+                for entry in entries.flatten() {
+                    let name = entry.file_name().to_string_lossy().to_lowercase();
+                    if name.contains("intel_npu") || name.contains("intelnpu") {
+                        return ("openvino", "Intel AI Boost (NPU)");
+                    }
+                }
+            }
+
+            // DirectML is available on all Windows 10+ with any GPU
+            return ("directml", "DirectML (GPU acceleration)");
+        }
+    }
+
+    // Linux: check for ROCm (AMD GPU)
+    #[cfg(target_os = "linux")]
+    {
+        if std::path::Path::new("/opt/rocm").exists() {
+            return ("rocm", "AMD ROCm (GPU acceleration)");
+        }
+        // Check for Intel OpenVINO
+        if std::path::Path::new("/opt/intel/openvino").exists() {
+            return ("openvino", "Intel OpenVINO");
+        }
+    }
+
+    ("cpu", "CPU only")
 }
 
 #[cfg(target_os = "macos")]
