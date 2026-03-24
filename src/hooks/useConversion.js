@@ -39,14 +39,19 @@ export default function useConversion() {
       const id = `job_${++jobCounter}`
       setJobs(prev => ({ ...prev, [file.path]: { ...prev[file.path], status:'converting', id } }))
       const resolved = outDir || file.path.replace(/\\/g,'/').split('/').slice(0,-1).join('/')
+
+      // Use event-driven completion instead of polling
       await new Promise(resolve => {
-        const poll = setInterval(() => {
-          setJobs(prev => {
-            const j = prev[file.path]
-            if (j?.status === 'done' || j?.status === 'error') { clearInterval(poll); resolve() }
-            return prev
-          })
-        }, 200)
+        let settled = false
+        const settle = () => { if (!settled) { settled = true; resolve() } }
+
+        const unDone = listen('convert:done', ({ payload }) => {
+          if (payload.id === id) { unDone.then(fn => fn()); settle() }
+        })
+        const unErr = listen('convert:error', ({ payload }) => {
+          if (payload.id === id) { unErr.then(fn => fn()); settle() }
+        })
+
         invoke('convert', { job: {
           id, srcPath: file.path, outDir: resolved, mode,
           format: formatOut, rate: formatOut === 'opus' ? '48000' : rate,
@@ -55,7 +60,7 @@ export default function useConversion() {
           caseName: caseName || null
         }}).catch(e => {
           setJobs(prev => ({ ...prev, [file.path]: { ...prev[file.path], status:'error', error: String(e) } }))
-          clearInterval(poll); resolve()
+          settle()
         })
       })
     }

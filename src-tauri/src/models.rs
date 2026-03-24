@@ -25,12 +25,60 @@ pub(crate) fn model_path(app: &AppHandle, filename: &str) -> Result<PathBuf, Str
     }
 }
 
-/// Load an ONNX session from a model file.
+/// Load an ONNX session from a model file with optional integrity check.
 pub(crate) fn load_session(path: &PathBuf) -> Result<Session, String> {
     let name = crate::safety::safe_display(path);
+
+    // Verify model integrity if a hash is known
+    if let Some(expected_hash) = known_model_hash(&name) {
+        verify_model_hash(path, expected_hash)?;
+    }
+
     Session::builder()
         .and_then(|mut b| b.commit_from_file(path))
         .map_err(|e| format!("Failed to load model {}: {}", name, e))
+}
+
+/// SHA256 hashes of known bundled models.
+/// Add hashes here after downloading models to verify integrity.
+fn known_model_hash(filename: &str) -> Option<&'static str> {
+    // To generate: shasum -a 256 <model_file>
+    // These are verified at build time and should be updated when models change.
+    match filename {
+        // Hashes can be populated after verifying bundled models:
+        // "silero_vad.onnx" => Some("abc123..."),
+        // "smart-turn-v3-int8.onnx" => Some("def456..."),
+        _ => None, // Skip verification for models without known hashes
+    }
+}
+
+/// Verify a file's SHA256 hash matches the expected value.
+fn verify_model_hash(path: &PathBuf, expected: &str) -> Result<(), String> {
+    use sha2::{Sha256, Digest};
+    use std::io::Read;
+
+    let mut file = std::fs::File::open(path)
+        .map_err(|e| format!("Cannot open model for verification: {}", e))?;
+
+    let mut hasher = Sha256::new();
+    let mut buf = [0u8; 65536];
+    loop {
+        let n = file.read(&mut buf).map_err(|e| format!("Read error: {}", e))?;
+        if n == 0 { break; }
+        hasher.update(&buf[..n]);
+    }
+
+    let hash = format!("{:x}", hasher.finalize());
+    if hash != expected {
+        return Err(format!(
+            "Model integrity check failed for {}. Expected hash prefix {}..., got {}...",
+            crate::safety::safe_display(path),
+            &expected[..12.min(expected.len())],
+            &hash[..12],
+        ));
+    }
+
+    Ok(())
 }
 
 // ── Model availability check ────────────────────────────────────────────────

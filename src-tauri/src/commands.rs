@@ -194,18 +194,29 @@ pub fn library_import_file(
     case_name: String,
     label: String,
 ) -> Result<(), String> {
-    let mut lib = state.library.lock().map_err(|e| e.to_string())?;
-    let lib_path = lib_path(&app);
+    // Validate inputs
+    crate::safety::check_file_safe(std::path::Path::new(&path))?;
     let trimmed = case_name.trim().to_string();
     if trimmed.is_empty() { return Err("Case name cannot be empty".into()); }
+    if trimmed.len() > 200 { return Err("Case name is too long (max 200 characters)".into()); }
+    let label_trimmed = label.trim().to_string();
+    if label_trimmed.len() > 100 { return Err("Label is too long (max 100 characters)".into()); }
+    // Sanitize case name: remove path separators and control characters
+    let sanitized_name: String = trimmed.chars()
+        .filter(|c| !c.is_control() && *c != '/' && *c != '\\' && *c != ':')
+        .collect();
+    if sanitized_name.is_empty() { return Err("Case name contains only invalid characters".into()); }
+
+    let mut lib = state.library.lock().map_err(|e| e.to_string())?;
+    let lib_path = lib_path(&app);
     let size = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
     let ext = Path::new(&path).extension().and_then(|e| e.to_str()).unwrap_or("wav").to_lowercase();
     let source_name = Path::new(&path).file_name().and_then(|n| n.to_str()).unwrap_or("imported").to_string();
-    let idx = lib.cases.iter().position(|c| !c.archived && c.name.to_lowercase() == trimmed.to_lowercase());
+    let idx = lib.cases.iter().position(|c| !c.archived && c.name.to_lowercase() == sanitized_name.to_lowercase());
     let case = if let Some(i) = idx {
         &mut lib.cases[i]
     } else {
-        lib.cases.push(Case { id: Uuid::new_v4().to_string(), name: trimmed.clone(), created_at: Utc::now().to_rfc3339(), archived: false, sessions: vec![] });
+        lib.cases.push(Case { id: Uuid::new_v4().to_string(), name: sanitized_name.clone(), created_at: Utc::now().to_rfc3339(), archived: false, sessions: vec![] });
         lib.cases.last_mut().unwrap()
     };
     case.sessions.push(Session {
@@ -213,7 +224,7 @@ pub fn library_import_file(
         date: Utc::now().format("%Y-%m-%d").to_string(),
         source_file: path.clone(),
         source_name,
-        participants: vec![Participant { label: label.trim().to_string(), files: vec![LibFile { path, format: ext, size }] }],
+        participants: vec![Participant { label: label_trimmed.clone(), files: vec![LibFile { path, format: ext, size }] }],
     });
     if let Some(parent) = lib_path.parent() { let _ = fs::create_dir_all(parent); }
     if let Ok(json) = serde_json::to_string_pretty(&*lib) { fs::write(&lib_path, json).map_err(|e| e.to_string())?; }

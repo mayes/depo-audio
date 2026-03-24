@@ -60,7 +60,7 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
     // ── AI pre-processing step ──────────────────────────────────────────────
     // Runs Rust-native AI processing before the FFmpeg pipeline.
     let mut ai_feed = feed.to_path_buf();
-    let mut ai_temps: Vec<PathBuf> = Vec::new();
+    let mut ai_temps: Vec<crate::safety::TempFile> = Vec::new();
     let mut channel_gains: Option<Vec<f64>> = None;
 
     let has_ai = job.denoise || job.auto_level || job.declip || job.enhance || job.dereverb;
@@ -89,15 +89,15 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
                 // DeepFilterNet3 — best quality, uses ONNX models
                 match denoise_deep_filter(app, &ai_feed).await {
                     Ok(denoised) => {
-                        ai_temps.push(denoised.clone());
+                        ai_temps.push(crate::safety::TempFile::new(denoised.clone()));
                         ai_feed = denoised;
                     }
                     Err(_) => {
                         // Fall back to RNNoise if DFN3 fails
                         let decoded = decode_to_wav_48k(app, &ai_feed).await?;
-                        ai_temps.push(decoded.clone());
+                        ai_temps.push(crate::safety::TempFile::new(decoded.clone()));
                         match denoise_wav(&decoded) {
-                            Ok(d) => { ai_temps.push(d.clone()); ai_feed = d; }
+                            Ok(d) => { ai_temps.push(crate::safety::TempFile::new(d.clone())); ai_feed = d; }
                             Err(_) => { ai_feed = decoded; }
                         }
                     }
@@ -105,10 +105,10 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
             } else {
                 // RNNoise — fast, lightweight
                 let decoded = decode_to_wav_48k(app, &ai_feed).await?;
-                ai_temps.push(decoded.clone());
+                ai_temps.push(crate::safety::TempFile::new(decoded.clone()));
                 match denoise_wav(&decoded) {
                     Ok(denoised) => {
-                        ai_temps.push(denoised.clone());
+                        ai_temps.push(crate::safety::TempFile::new(denoised.clone()));
                         ai_feed = denoised;
                     }
                     Err(_) => { ai_feed = decoded; }
@@ -120,7 +120,7 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
         if job.dereverb {
             match dereverb::dereverb(app, &ai_feed).await {
                 Ok(dereverbbed) => {
-                    ai_temps.push(dereverbbed.clone());
+                    ai_temps.push(crate::safety::TempFile::new(dereverbbed.clone()));
                     ai_feed = dereverbbed;
                 }
                 Err(_) => {} // Fall through if model not available
@@ -131,7 +131,7 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
         if job.enhance {
             match enhance_bandwidth(app, &ai_feed).await {
                 Ok(enhanced) => {
-                    ai_temps.push(enhanced.clone());
+                    ai_temps.push(crate::safety::TempFile::new(enhanced.clone()));
                     ai_feed = enhanced;
                 }
                 Err(_) => {} // Fall through on failure
@@ -255,13 +255,11 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
     }).collect();
 
     if let Some(empty) = files.iter().find(|f| f.size == 0) {
-        // Clean up AI temp files before returning error
-        for tmp in &ai_temps { let _ = fs::remove_file(tmp); }
+        // ai_temps cleaned up automatically via TempFile Drop
         return Err(format!("Output file is empty: {}", empty.name));
     }
 
-    // Clean up AI temp files
-    for tmp in &ai_temps { let _ = fs::remove_file(tmp); }
+    // ai_temps cleaned up automatically via TempFile Drop
 
     Ok(files)
 }

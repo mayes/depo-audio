@@ -1,7 +1,9 @@
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 
 use chrono::Utc;
+use fs2::FileExt;
 use tauri::{AppHandle, Manager};
 use uuid::Uuid;
 
@@ -32,7 +34,21 @@ pub(crate) fn save_library(app: &AppHandle, lib: &Library) {
     let path = lib_path(app);
     if let Some(parent) = path.parent() { let _ = fs::create_dir_all(parent); }
     if let Ok(json) = serde_json::to_string_pretty(lib) {
-        let _ = fs::write(path, json);
+        // Use file-level locking to prevent concurrent write corruption
+        match fs::OpenOptions::new().write(true).create(true).truncate(true).open(&path) {
+            Ok(mut file) => {
+                if file.lock_exclusive().is_ok() {
+                    let _ = file.write_all(json.as_bytes());
+                    let _ = file.unlock();
+                } else {
+                    // Fallback: write without lock (better than losing data)
+                    let _ = fs::write(&path, &json);
+                }
+            }
+            Err(_) => {
+                let _ = fs::write(&path, &json);
+            }
+        }
     }
 }
 

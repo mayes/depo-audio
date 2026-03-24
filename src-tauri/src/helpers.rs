@@ -85,8 +85,14 @@ pub(crate) fn strip_sgmca_header(src: &Path) -> Result<(PathBuf, bool), String> 
     const SCAN: usize = 8192;
 
     let mut file = fs::File::open(src).map_err(|e| e.to_string())?;
-    let mut buf = vec![0u8; SCAN.min(fs::metadata(src).map(|m| m.len() as usize).unwrap_or(SCAN))];
-    file.read_exact(&mut buf).ok();
+    let file_size = fs::metadata(src).map(|m| m.len() as usize).unwrap_or(0);
+    if file_size == 0 {
+        return Err("SGMCA file is empty".into());
+    }
+    let read_size = SCAN.min(file_size);
+    let mut buf = vec![0u8; read_size];
+    let bytes_read = file.read(&mut buf).map_err(|e| e.to_string())?;
+    buf.truncate(bytes_read);
 
     let offset = buf.windows(4).position(|w| w == MAGIC).unwrap_or(0);
     if offset == 0 {

@@ -25,6 +25,8 @@ uuid = { version = "1", features = ["v4"] }
 
 # System
 dirs-next = "2.0"
+sha2 = "0.10"
+fs2 = "0.4"
 
 # AI audio processing
 nnnoiseless = "0.5"
