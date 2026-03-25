@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.7.0] - 2026-03-24
+
+### Added
+- **Multi-source merge** — combine multiple recordings of the same event into one clean file with automatic sync detection via cross-correlation. Two strategies: "Best quality" (picks clearest source per segment) and "Mix all" (blends everything).
+- **Merge tab** — new fourth tab with source management, sync badges, strategy selector, and merge controls.
+- **Silero VAD** — voice activity detection at 10ms granularity. Detects speech vs. silence segments. Integrated into analysis with speech ratio reporting.
+- **De-reverberation** — optional DCCRN+ model reduces room echo (model exported via scripts/export_dccrn.py).
+- **Hardware accelerator detection** — detects Apple CoreML (ANE), AMD XDNA NPU (Ryzen AI), AMD ROCm, Intel AI Boost NPU, Intel OpenVINO, and Windows DirectML. Shown in UI with performance tier recommendation.
+- **Health check command** — verifies FFmpeg/FFprobe sidecar availability and reports models + accelerator at startup.
+- **Radix UI upgrade** — Switch (accessible toggle), Dialog (focus-trapped modal), Tabs (keyboard-navigable), Tooltip (reusable with provider).
+
+### Security
+- **TempFile drop guard** — automatic cleanup of temporary audio files, even on panic/crash.
+- **ONNX model SHA256 verification** — framework for verifying bundled model integrity.
+- **File-level locking** — library.json uses exclusive file locks (fs2) to prevent concurrent write corruption.
+- **Input sanitization** — case names stripped of path separators and control characters, length limits enforced.
+- **Error sanitization** — filesystem paths stripped from all user-facing error messages.
+- **File size limits** — 2GB maximum for audio files loaded into memory.
+- **Parameter validation** — sample rate (8-192kHz) and fade duration (0-30s) validated before processing.
+- **SGMCA safety** — handles empty/short files properly instead of silent failure.
+- **Event-driven completion** — replaced polling with event listeners in useConversion (eliminates stale closure risk).
+- **App init race fix** — library loaded from disk once, then uses in-memory state.
+- **Windows path fix** — correct parent directory extraction using native separators.
+
+### Changed
+- Four-tab layout: Convert | Player | Merge | Library
+- Analysis includes speech ratio from VAD and de-reverb recommendation
+
 ## [0.6.0] - 2026-03-24
 
 ### Added

@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicegui/nicegui/main/nicegui/libraries/js/tauri/tauri.conf.json",
   "productName": "DepoAudio",
-  "version": "0.5.0",
+  "version": "0.7.0",
   "identifier": "com.depoaudio.app",
   "build": {
     "frontendDist": "../dist",
