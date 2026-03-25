@@ -1,22 +1,24 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { Sun, Moon, Monitor, Settings } from 'lucide-react'
 import { basename } from './utils'
 
 import useTheme from './hooks/useTheme'
-import usePreferences from './hooks/usePreferences'
+import { usePreferencesContext } from './hooks/PreferencesContext'
 import useFileDrop from './hooks/useFileDrop'
 import useConversion from './hooks/useConversion'
 
 import { LogoSvg } from './components/common/Icons'
+import Spinner from './components/common/Spinner'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs'
 import { Badge } from './components/ui/badge'
 import { Button } from './components/ui/button'
 import ConvertTab from './components/Convert/ConvertTab'
-import LibraryTab from './components/Library/LibraryTab'
-import PlayerTab from './components/Player/PlayerTab'
-import MergeTab from './components/Merge/MergeTab'
-import SettingsPanel from './components/SettingsPanel'
+
+const LibraryTab = lazy(() => import('./components/Library/LibraryTab'))
+const PlayerTab  = lazy(() => import('./components/Player/PlayerTab'))
+const MergeTab   = lazy(() => import('./components/Merge/MergeTab'))
+const SettingsPanel = lazy(() => import('./components/SettingsPanel'))
 
 const themeIcons = {
   light: Sun,
@@ -31,16 +33,8 @@ export default function App() {
   const { themePref, themeLabel, cycleTheme, setThemeDirect } = useTheme()
   const [settingsOpen, setSettingsOpen] = useState(false)
 
-  const prefs = usePreferences()
-  const {
-    mode, setMode, formatOut, setFormatOut, labels, setLabels,
-    chanVols, setChanVols, outDir, setOutDir, rate, setRate,
-    normalize, setNormalize, trim, setTrim, fade, setFade,
-    fadeDur, setFadeDur, hpf, setHpf,
-    denoise, setDenoise, denoiseQuality, setDenoiseQuality,
-    autoLevel, setAutoLevel, declip, setDeclip, enhance, setEnhance,
-    dereverb, setDereverb,
-  } = prefs
+  const prefs = usePreferencesContext()
+  const { labels, outDir } = prefs
 
   const fileDrop = useFileDrop()
   const {
@@ -50,7 +44,7 @@ export default function App() {
   } = fileDrop
 
   const conversion = useConversion()
-  const { jobs, setJobs, converting, doneCount, failCount } = conversion
+  const { jobs, converting, doneCount, failCount } = conversion
 
   // System capabilities (hardware-aware recommendations)
   const [capabilities, setCapabilities] = useState(null)
@@ -71,9 +65,7 @@ export default function App() {
 
   const handleStartConversion = () => {
     conversion.startConversion({
-      files, outDir, mode, formatOut, rate,
-      labels, chanVols, normalize, trim, fade, fadeDur, hpf,
-      denoise, denoiseQuality, autoLevel, declip, enhance, dereverb,
+      files, outDir, ...prefs,
       caseName, setCases,
     })
   }
@@ -116,23 +108,6 @@ export default function App() {
       <TabsContent value="convert" forceMount={tab === 'convert' ? true : undefined}>
         {tab === 'convert' && (
           <ConvertTab
-            mode={mode} setMode={setMode}
-            formatOut={formatOut} setFormatOut={setFormatOut}
-            labels={labels} setLabels={setLabels}
-            chanVols={chanVols} setChanVols={setChanVols}
-            outDir={outDir} setOutDir={setOutDir}
-            rate={rate} setRate={setRate}
-            normalize={normalize} setNormalize={setNormalize}
-            trim={trim} setTrim={setTrim}
-            fade={fade} setFade={setFade}
-            fadeDur={fadeDur} setFadeDur={setFadeDur}
-            hpf={hpf} setHpf={setHpf}
-            denoise={denoise} setDenoise={setDenoise}
-            denoiseQuality={denoiseQuality} setDenoiseQuality={setDenoiseQuality}
-            autoLevel={autoLevel} setAutoLevel={setAutoLevel}
-            declip={declip} setDeclip={setDeclip}
-            enhance={enhance} setEnhance={setEnhance}
-            dereverb={dereverb} setDereverb={setDereverb}
             capabilities={capabilities}
             files={files} dragOver={dragOver}
             caseName={caseName} setCaseName={setCaseName}
@@ -147,31 +122,39 @@ export default function App() {
       </TabsContent>
 
       <TabsContent value="player">
-        <PlayerTab />
+        <Suspense fallback={<div className="flex items-center justify-center py-12"><Spinner className="h-5 w-5" /></div>}>
+          <PlayerTab />
+        </Suspense>
       </TabsContent>
 
       <TabsContent value="merge">
-        <MergeTab />
+        <Suspense fallback={<div className="flex items-center justify-center py-12"><Spinner className="h-5 w-5" /></div>}>
+          <MergeTab />
+        </Suspense>
       </TabsContent>
 
       <TabsContent value="library">
-        <LibraryTab
-          cases={cases} setCases={setCases}
-          search={libSearch} setSearch={setLibSearch}
-          labels={labels}
-          onReexport={(srcPath, srcCaseName) => {
-            setFiles([{path:srcPath, name:basename(srcPath), fmt:null}])
-            setCaseName(srcCaseName || '')
-            setTab('convert')
-          }}
-        />
+        <Suspense fallback={<div className="flex items-center justify-center py-12"><Spinner className="h-5 w-5" /></div>}>
+          <LibraryTab
+            cases={cases} setCases={setCases}
+            search={libSearch} setSearch={setLibSearch}
+            labels={labels}
+            onReexport={(srcPath, srcCaseName) => {
+              setFiles([{path:srcPath, name:basename(srcPath), fmt:null}])
+              setCaseName(srcCaseName || '')
+              setTab('convert')
+            }}
+          />
+        </Suspense>
       </TabsContent>
 
-      <SettingsPanel
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        prefs={{ ...prefs, themePref, cycleThemeTo: setThemeDirect }}
-      />
+      <Suspense fallback={null}>
+        <SettingsPanel
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          prefs={{ ...prefs, themePref, cycleThemeTo: setThemeDirect }}
+        />
+      </Suspense>
     </Tabs>
   )
 }

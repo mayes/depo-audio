@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::OnceLock;
 
 use regex::Regex;
 use tauri::{AppHandle, Emitter};
@@ -7,6 +8,11 @@ use tauri_plugin_shell::ShellExt;
 
 use crate::helpers::{ffmpeg_bin_name, ffprobe_bin_name};
 use crate::types::{ConvertJob, ProgressEvent};
+
+fn time_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"time=(\d+):(\d+):(\d+\.\d+)").unwrap())
+}
 
 // ── Probe helpers ─────────────────────────────────────────────────────────────
 
@@ -109,7 +115,7 @@ pub(crate) async fn run_ffmpeg(app: &AppHandle, args: Vec<String>, job_id: &str)
         .map_err(|e| e.to_string())?;
 
     let mut stderr_acc = String::new();
-    let time_re = Regex::new(r"time=(\d+):(\d+):(\d+\.\d+)").unwrap();
+    let time_re = time_regex();
     let started = std::time::Instant::now();
     let timeout = std::time::Duration::from_secs(FFMPEG_TIMEOUT_SECS);
 

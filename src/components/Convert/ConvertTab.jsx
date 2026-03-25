@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { MODES, FORMATS_OUT, CH_COLORS } from '../../constants'
 import { PRESETS } from '../../presets'
+import { usePreferencesContext } from '../../hooks/PreferencesContext'
 import { Loader2 } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card'
@@ -14,14 +15,7 @@ import FormatTable from './FormatTable'
 import FileRow from './FileRow'
 
 export default function ConvertTab({
-  // Preferences
-  mode, setMode, formatOut, setFormatOut, labels, setLabels,
-  chanVols, setChanVols, outDir, setOutDir, rate, setRate,
-  normalize, setNormalize, trim, setTrim, fade, setFade,
-  fadeDur, setFadeDur, hpf, setHpf,
-  denoise, setDenoise, denoiseQuality, setDenoiseQuality,
-  autoLevel, setAutoLevel, declip, setDeclip, enhance, setEnhance,
-  dereverb, setDereverb, capabilities,
+  capabilities,
   // Files
   files, dragOver, caseName, setCaseName,
   onDragOver, onDragLeave, onDrop, browseFiles, browseOutDir,
@@ -29,6 +23,15 @@ export default function ConvertTab({
   // Conversion
   jobs, converting, startConversion, doneCount, failCount,
 }) {
+  const {
+    mode, setMode, formatOut, setFormatOut, labels, setLabels,
+    chanVols, setChanVols, outDir, setOutDir, rate, setRate,
+    normalize, setNormalize, trim, setTrim, fade, setFade,
+    fadeDur, setFadeDur, hpf, setHpf,
+    denoise, setDenoise, denoiseQuality, setDenoiseQuality,
+    autoLevel, setAutoLevel, declip, setDeclip, enhance, setEnhance,
+    dereverb, setDereverb,
+  } = usePreferencesContext()
   const anyProc = normalize || trim || fade || hpf
   const anyAi = denoise || autoLevel || declip || enhance || dereverb
   const [analysis, setAnalysis] = useState(null)

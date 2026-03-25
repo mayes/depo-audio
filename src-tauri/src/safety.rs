@@ -92,3 +92,87 @@ impl AsRef<Path> for TempFile {
         &self.path
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn validate_rate_accepts_valid() {
+        assert!(validate_rate("8000").is_ok());
+        assert!(validate_rate("44100").is_ok());
+        assert!(validate_rate("48000").is_ok());
+        assert!(validate_rate("192000").is_ok());
+    }
+
+    #[test]
+    fn validate_rate_rejects_invalid() {
+        assert!(validate_rate("0").is_err());
+        assert!(validate_rate("7999").is_err());
+        assert!(validate_rate("192001").is_err());
+        assert!(validate_rate("abc").is_err());
+        assert!(validate_rate("").is_err());
+    }
+
+    #[test]
+    fn validate_fade_dur_accepts_valid() {
+        assert!(validate_fade_dur(0.0).is_ok());
+        assert!(validate_fade_dur(0.5).is_ok());
+        assert!(validate_fade_dur(30.0).is_ok());
+    }
+
+    #[test]
+    fn validate_fade_dur_rejects_invalid() {
+        assert!(validate_fade_dur(-1.0).is_err());
+        assert!(validate_fade_dur(31.0).is_err());
+        assert!(validate_fade_dur(f64::NAN).is_err());
+        assert!(validate_fade_dur(f64::INFINITY).is_err());
+    }
+
+    #[test]
+    fn safe_display_extracts_filename() {
+        assert_eq!(safe_display(Path::new("/tmp/audio.wav")), "audio.wav");
+        assert_eq!(safe_display(Path::new("audio.wav")), "audio.wav");
+    }
+
+    #[test]
+    fn check_file_safe_rejects_missing() {
+        assert!(check_file_safe(Path::new("/nonexistent/file.wav")).is_err());
+    }
+
+    #[test]
+    fn check_file_safe_accepts_valid_file() {
+        let dir = std::env::temp_dir().join("depoaudio_test_safety");
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("test.wav");
+        let mut f = std::fs::File::create(&path).unwrap();
+        f.write_all(b"RIFF test data").unwrap();
+        assert!(check_file_safe(&path).is_ok());
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_dir(&dir);
+    }
+
+    #[test]
+    fn check_file_safe_rejects_empty() {
+        let dir = std::env::temp_dir().join("depoaudio_test_safety_empty");
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("empty.wav");
+        std::fs::File::create(&path).unwrap();
+        assert!(check_file_safe(&path).is_err());
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_dir(&dir);
+    }
+
+    #[test]
+    fn temp_file_cleans_up_on_drop() {
+        let path = std::env::temp_dir().join("depoaudio_test_tempfile.tmp");
+        {
+            let mut f = std::fs::File::create(&path).unwrap();
+            f.write_all(b"temp").unwrap();
+            let _guard = TempFile::new(path.clone());
+            assert!(path.exists());
+        }
+        assert!(!path.exists());
+    }
+}

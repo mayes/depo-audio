@@ -38,18 +38,16 @@ export default function ComparePlayer({ originalPath, processedPath, originalLab
     // Pause current
     if (activeRef.current) activeRef.current.pause()
 
-    setActiveSource(source)
-
-    // Sync position and resume
-    setTimeout(() => {
-      const newRef = source === 'original' ? originalRef : processedRef
-      if (newRef.current) {
-        newRef.current.currentTime = time
-        if (wasPlaying) {
-          newRef.current.play().then(() => setPlaying(true)).catch(() => {})
-        }
+    // Both audio elements are always mounted, so we can switch immediately
+    const newRef = source === 'original' ? originalRef : processedRef
+    if (newRef.current) {
+      newRef.current.currentTime = time
+      if (wasPlaying) {
+        newRef.current.play().then(() => setPlaying(true)).catch(() => {})
       }
-    }, 50)
+    }
+
+    setActiveSource(source)
   }
 
   const seek = (time) => {
