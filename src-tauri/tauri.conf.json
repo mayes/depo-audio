@@ -1,23 +1,26 @@
 {
-  "$schema": "https://raw.githubusercontent.com/nicegui/nicegui/main/nicegui/libraries/js/tauri/tauri.conf.json",
+  "$schema": "https://schema.tauri.app/config/2",
   "productName": "DepoAudio",
   "version": "0.7.0",
-  "identifier": "com.depoaudio.app",
+  "identifier": "com.andrewmayes.depoaudio",
   "build": {
     "frontendDist": "../dist",
-    "devUrl": "http://localhost:5173",
+    "devUrl": "http://localhost:1420",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "DepoAudio",
-        "width": 960,
-        "height": 720,
-        "minWidth": 680,
-        "minHeight": 520,
-        "center": true
+        "width": 980,
+        "height": 780,
+        "minWidth": 760,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "dragDropEnabled": true
       }
     ],
     "security": {
@@ -26,6 +29,7 @@
   },
   "bundle": {
     "active": true,
+    "targets": "all",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -41,19 +45,17 @@
       "binaries/ffprobe"
     ],
     "macOS": {
-      "minimumSystemVersion": "12.0"
+      "minimumSystemVersion": "12.0",
+      "entitlements": null
     },
     "windows": {
-      "webviewInstallMode": { "type": "embedBootstrapper" }
-    }
-  },
-  "plugins": {
-    "shell": {
-      "sidecar": true,
-      "scope": [
-        { "name": "binaries/ffmpeg", "sidecar": true },
-        { "name": "binaries/ffprobe", "sidecar": true }
-      ]
+      "wix": {
+        "language": "en-US"
+      },
+      "nsis": {
+        "languages": ["English"],
+        "displayLanguageSelector": false
+      }
     }
   }
 }

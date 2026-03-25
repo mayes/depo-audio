@@ -30,6 +30,7 @@ pub(crate) fn model_path(app: &AppHandle, filename: &str) -> Result<PathBuf, Str
 const INFERENCE_TIMEOUT_MS: i32 = 30_000; // 30 seconds
 
 /// Load an ONNX session with hardware acceleration and optional integrity check.
+/// Returns Err if ONNX Runtime is not installed — the app continues without AI features.
 pub(crate) fn load_session(path: &PathBuf) -> Result<Session, String> {
     let name = crate::safety::safe_display(path);
 
@@ -38,31 +39,36 @@ pub(crate) fn load_session(path: &PathBuf) -> Result<Session, String> {
         verify_model_hash(path, expected_hash)?;
     }
 
-    let result = Session::builder().and_then(|mut b| {
-        // Try hardware acceleration. with_execution_providers consumes the builder,
-        // so we only call it if we have a provider to add.
-        #[cfg(target_os = "macos")]
-        {
-            b = match b.with_execution_providers([
-                ort::execution_providers::CoreMLExecutionProvider::default().build(),
-            ]) {
-                Ok(builder) => builder,
-                Err(_) => Session::builder()?, // Fallback: new CPU-only builder
-            };
-        }
-        #[cfg(target_os = "windows")]
-        {
-            b = match b.with_execution_providers([
-                ort::execution_providers::DirectMLExecutionProvider::default().build(),
-            ]) {
-                Ok(builder) => builder,
-                Err(_) => Session::builder()?,
-            };
-        }
-        b.commit_from_file(path)
+    // Catch panics from missing ONNX Runtime (load-dynamic mode)
+    let result = std::panic::catch_unwind(|| {
+        Session::builder().and_then(|mut b| {
+            #[cfg(target_os = "macos")]
+            {
+                b = match b.with_execution_providers([
+                    ort::execution_providers::CoreMLExecutionProvider::default().build(),
+                ]) {
+                    Ok(builder) => builder,
+                    Err(_) => Session::builder()?,
+                };
+            }
+            #[cfg(target_os = "windows")]
+            {
+                b = match b.with_execution_providers([
+                    ort::execution_providers::DirectMLExecutionProvider::default().build(),
+                ]) {
+                    Ok(builder) => builder,
+                    Err(_) => Session::builder()?,
+                };
+            }
+            b.commit_from_file(path)
+        })
     });
 
-    result.map_err(|e| format!("Failed to load model {}: {}", name, e))
+    match result {
+        Ok(Ok(session)) => Ok(session),
+        Ok(Err(e)) => Err(format!("Failed to load model {}: {}", name, e)),
+        Err(_) => Err("ONNX Runtime not available. AI features are disabled. Install onnxruntime to enable them.".into()),
+    }
 }
 
 /// SHA256 hashes of known bundled models.
