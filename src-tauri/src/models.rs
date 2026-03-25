@@ -26,6 +26,7 @@ pub(crate) fn model_path(app: &AppHandle, filename: &str) -> Result<PathBuf, Str
 }
 
 /// Maximum time (ms) for a single model inference call.
+#[allow(dead_code)]
 const INFERENCE_TIMEOUT_MS: i32 = 30_000; // 30 seconds
 
 /// Load an ONNX session with hardware acceleration and optional integrity check.

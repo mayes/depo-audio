@@ -52,6 +52,7 @@ pub(crate) async fn probe_channels(app: &AppHandle, feed: &Path, input_codec: &[
 
 // ── Filter chain builder ─────────────────────────────────────────────────────
 
+#[allow(dead_code)]
 pub(crate) async fn build_proc_filters(app: &AppHandle, opts: &ConvertJob, feed: &Path, input_codec: &[String]) -> Vec<String> {
     build_proc_filters_with_gain(app, opts, feed, input_codec, None).await
 }

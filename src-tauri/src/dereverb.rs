@@ -21,6 +21,7 @@ use crate::models;
 // See scripts/export_dccrn.py for model export instructions.
 
 /// Check if de-reverb is available (model file exists).
+#[allow(dead_code)]
 pub(crate) fn is_available(app: &AppHandle) -> bool {
     models::model_path(app, "dccrn_plus.onnx").is_ok()
 }
