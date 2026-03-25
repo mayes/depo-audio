@@ -59,11 +59,18 @@ export default function ConvertTab({
         }
         setAnalysis(aggregated)
 
-        // Auto-enable recommended features
+        // Auto-enable all recommended processing
         if (aggregated.needsDenoise) setDenoise(true)
         if (aggregated.needsLeveling) setAutoLevel(true)
         if (aggregated.hasClipping) setDeclip(true)
         if (aggregated.isNarrowband) setEnhance(true)
+        // Smart fine-tune: always enable HPF + normalize for speech
+        setHpf(true)
+        setNormalize(true)
+        // Trim silence if there's significant dead air
+        if (aggregated.speechRatio != null && aggregated.speechRatio < 0.8) setTrim(true)
+        // Fade for clean start/end
+        setFade(true)
       }
     } catch (e) {
       console.error('Scan failed:', e)
@@ -160,10 +167,10 @@ export default function ConvertTab({
             </div>
           </section>
 
-          {/* ── SMART AUDIO CLEANUP ──────────────────────────────────────── */}
+          {/* ── AUDIO PROCESSING (unified panel) ─────────────────────────── */}
           <section className="panel panel--tight panel--ai">
             <div className="panel-head">
-              <span className="panel-label">SMART AUDIO CLEANUP</span>
+              <span className="panel-label">AUDIO PROCESSING</span>
               <button className="btn btn--sm btn--scan" onClick={handleScan}
                 disabled={!files.length || scanning || converting}>
                 {scanning ? `Scanning${files.length > 1 ? ` (${files.length} files)` : ''}…` : `Scan${files.length > 1 ? ` All (${files.length})` : ''}`}
@@ -171,7 +178,7 @@ export default function ConvertTab({
             </div>
 
             {!analysis && !scanning && (
-              <p className="ai-hint">Drop files and click <strong>Scan</strong> to automatically detect audio issues and apply the right fixes.</p>
+              <p className="ai-hint">Drop files and click <strong>Scan</strong> to detect issues and auto-enable the right fixes.</p>
             )}
 
             {scanning && (
@@ -203,12 +210,14 @@ export default function ConvertTab({
               </div>
             )}
 
+            {/* ── Smart (auto-detected) ── */}
+            <div className="proc-section-label">SMART</div>
             <div className="proc-grid">
               <label className="proc-item proc-item--ai">
                 <div className="proc-item-info">
                   <span className="proc-name">Remove Background Noise</span>
                   <span className="proc-desc">
-                    Cleans up HVAC hum, paper rustling, and room noise — keeps speech clear
+                    Cleans up HVAC hum, paper rustling, and room noise
                     {analysis?.needsDenoise && <span className="ai-detected"> · Noise detected</span>}
                     {denoise && (
                       <span className="denoise-quality" onClick={e => e.preventDefault()}>
@@ -251,8 +260,8 @@ export default function ConvertTab({
                 <div className="proc-item-info">
                   <span className="proc-name">Enhance Clarity</span>
                   <span className="proc-desc">
-                    Improves phone recordings and narrow-band audio for easier listening
-                    {analysis?.isNarrowband && <span className="ai-detected"> · {analysis.sampleRate?.toLocaleString() || ''}Hz audio detected</span>}
+                    Improves phone recordings and narrow-band audio
+                    {analysis?.isNarrowband && <span className="ai-detected"> · {analysis.sampleRate?.toLocaleString() || ''}Hz detected</span>}
                   </span>
                 </div>
                 <Toggle checked={enhance} onChange={setEnhance} />
@@ -261,60 +270,33 @@ export default function ConvertTab({
               <label className="proc-item proc-item--ai">
                 <div className="proc-item-info">
                   <span className="proc-name">Reduce Room Echo</span>
-                  <span className="proc-desc">
-                    Removes reverb and echo from recordings made in large rooms or hallways
-                  </span>
+                  <span className="proc-desc">Removes reverb from large rooms or hallways</span>
                 </div>
                 <Toggle checked={dereverb} onChange={setDereverb} />
               </label>
             </div>
 
-            {/* Processing pipeline preview */}
-            {anyAi && (
-              <div className="proc-chain">
-                <span className="proc-chain-label">CLEANUP</span>
-                <div className="proc-chain-steps">
-                  {denoise   && <><span className="proc-chip proc-chip--ai">Denoise</span><span className="proc-chain-arrow">→</span></>}
-                  {dereverb  && <><span className="proc-chip proc-chip--ai">De-reverb</span><span className="proc-chain-arrow">→</span></>}
-                  {enhance   && <><span className="proc-chip proc-chip--ai">Enhance</span><span className="proc-chain-arrow">→</span></>}
-                  {declip    && <><span className="proc-chip proc-chip--ai">De-clip</span><span className="proc-chain-arrow">→</span></>}
-                  {autoLevel && <span className="proc-chip proc-chip--ai">Auto-Level</span>}
-                </div>
-              </div>
-            )}
-
-            <p className="ai-privacy">
-              All processing runs on your machine — nothing is uploaded or sent anywhere.
-              {capabilities && (
-                <span className="ai-hw-hint" title={`${capabilities.cpuCores} cores · ${Math.round(capabilities.ramMb/1024)}GB RAM${capabilities.appleSilicon ? ' · Apple Silicon' : ''}`}>
-                  {' '}· {capabilities.tier === 'high' ? 'High performance' : capabilities.tier === 'mid' ? 'Standard performance' : 'Lightweight mode'}
-                </span>
-              )}
-            </p>
-          </section>
-
-          {/* ── PROCESSING ───────────────────────────────────────────────── */}
-          <section className="panel panel--tight">
-            <div className="panel-head"><span className="panel-label">PROCESSING</span></div>
+            {/* ── Fine-tune ── */}
+            <div className="proc-section-label">FINE-TUNE</div>
             <div className="proc-grid">
               <label className="proc-item">
                 <div className="proc-item-info">
                   <span className="proc-name">High-Pass Filter</span>
-                  <span className="proc-desc">80 Hz cutoff — removes HVAC hum, mic handling noise, low rumble</span>
+                  <span className="proc-desc">80 Hz cutoff — removes low rumble and handling noise</span>
                 </div>
                 <Toggle checked={hpf} onChange={setHpf} />
               </label>
               <label className="proc-item">
                 <div className="proc-item-info">
-                  <span className="proc-name">Normalize</span>
-                  <span className="proc-desc">Loudnorm — evens out quiet recordings, targets –16 LUFS / –1.5 TP</span>
+                  <span className="proc-name">Normalize Volume</span>
+                  <span className="proc-desc">Targets –16 LUFS / –1.5 TP for consistent output level</span>
                 </div>
                 <Toggle checked={normalize} onChange={setNormalize} />
               </label>
               <label className="proc-item">
                 <div className="proc-item-info">
                   <span className="proc-name">Trim Silence</span>
-                  <span className="proc-desc">Remove leading and trailing silence below –50 dB / 0.3s minimum</span>
+                  <span className="proc-desc">Remove dead air at start and end (below –50 dB)</span>
                 </div>
                 <Toggle checked={trim} onChange={setTrim} />
               </label>
@@ -337,7 +319,7 @@ export default function ConvertTab({
               </label>
             </div>
 
-            {/* Live processing chain preview */}
+            {/* Processing chain preview */}
             <div className="proc-chain">
               <span className="proc-chain-label">CHAIN</span>
               {(anyProc || anyAi) ? (
@@ -346,16 +328,25 @@ export default function ConvertTab({
                   {dereverb  && <><span className="proc-chip proc-chip--ai">De-reverb</span><span className="proc-chain-arrow">→</span></>}
                   {enhance   && <><span className="proc-chip proc-chip--ai">Enhance</span><span className="proc-chain-arrow">→</span></>}
                   {declip    && <><span className="proc-chip proc-chip--ai">De-clip</span><span className="proc-chain-arrow">→</span></>}
-                  {hpf       && <><span className="proc-chip proc-chip--on">HPF 80Hz</span><span className="proc-chain-arrow">→</span></>}
+                  {hpf       && <><span className="proc-chip proc-chip--on">HPF</span><span className="proc-chain-arrow">→</span></>}
                   {autoLevel && <><span className="proc-chip proc-chip--ai">Auto-Level</span><span className="proc-chain-arrow">→</span></>}
-                  {normalize && <><span className="proc-chip proc-chip--on">Loudnorm</span><span className="proc-chain-arrow">→</span></>}
-                  {trim      && <><span className="proc-chip proc-chip--on">Trim silence</span><span className="proc-chain-arrow">→</span></>}
+                  {normalize && <><span className="proc-chip proc-chip--on">Normalize</span><span className="proc-chain-arrow">→</span></>}
+                  {trim      && <><span className="proc-chip proc-chip--on">Trim</span><span className="proc-chain-arrow">→</span></>}
                   {fade      && <span className="proc-chip proc-chip--on">Fade {fadeDur}s</span>}
                 </div>
               ) : (
                 <span className="proc-chain-empty">No processing — direct transcode only</span>
               )}
             </div>
+
+            <p className="ai-privacy">
+              All processing runs on your machine — nothing is uploaded or sent anywhere.
+              {capabilities && (
+                <span className="ai-hw-hint" title={`${capabilities.cpuCores} cores · ${Math.round(capabilities.ramMb/1024)}GB RAM${capabilities.appleSilicon ? ' · Apple Silicon' : ''}`}>
+                  {' '}· {capabilities.tier === 'high' ? 'High performance' : capabilities.tier === 'mid' ? 'Standard performance' : 'Lightweight mode'}
+                </span>
+              )}
+            </p>
           </section>
 
           {/* ── OPTIONS ──────────────────────────────────────────────────── */}
