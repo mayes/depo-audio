@@ -130,6 +130,10 @@ pub(crate) fn strip_sgmca_header(src: &Path) -> Result<(PathBuf, bool), String> 
         return Ok((src.to_path_buf(), false));
     }
 
+    // Security note: UUID-based temp filenames are unpredictable, which is sufficient
+    // for a single-user desktop app. The system temp dir inherits OS-level permissions
+    // (typically user-only on macOS/Windows). For multi-user or server contexts, consider
+    // creating a private subdirectory with restrictive permissions (0o700).
     let tmp = std::env::temp_dir().join(format!("depoaudio_{}.ogg", Uuid::new_v4().to_string().replace('-', "")));
     file.seek(SeekFrom::Start(offset as u64)).map_err(|e| e.to_string())?;
     let mut out = fs::File::create(&tmp).map_err(|e| e.to_string())?;

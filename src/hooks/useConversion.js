@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 
@@ -7,9 +7,11 @@ let jobCounter = 0
 export default function useConversion() {
   const [jobs, setJobs]             = useState({})
   const [converting, setConverting] = useState(false)
+  const convertingRef = useRef(false)
 
   const startConversion = useCallback(async ({ files, outDir, mode, formatOut, rate, labels, chanVols, normalize, trim, fade, fadeDur, hpf, denoise, denoiseQuality, autoLevel, declip, enhance, dereverb, caseName, setCases }) => {
-    if (converting || !files.length) return
+    if (convertingRef.current || !files.length) return
+    convertingRef.current = true
     setConverting(true)
     setJobs(Object.fromEntries(files.map(f => [f.path, { status:'queued', outputs:[], error:null }])))
 
@@ -68,9 +70,10 @@ export default function useConversion() {
     }
 
     await unlistenProg(); await unlistenDone(); await unlistenErr()
+    convertingRef.current = false
     setConverting(false)
     invoke('library_get').then(setCases).catch(() => {})
-  }, [converting])
+  }, [])
 
   const doneCount = Object.values(jobs).filter(j => j.status === 'done').length
   const failCount = Object.values(jobs).filter(j => j.status === 'error').length

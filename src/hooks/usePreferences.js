@@ -38,10 +38,13 @@ export default function usePreferences() {
     }).catch(() => setPrefsReady(true))
   }, [])
 
-  // Persist prefs on change
+  // Persist prefs on change (debounced)
   useEffect(() => {
     if (!prefsReady) return
-    invoke('prefs_set', { patch: { mode, format: formatOut, rate, outDir, labels, chanVols, normalize, trim, fade, fadeDur, hpf, denoise, denoiseQuality, autoLevel, declip, enhance, dereverb } })
+    const timer = setTimeout(() => {
+      invoke('prefs_set', { patch: { mode, format: formatOut, rate, outDir, labels, chanVols, normalize, trim, fade, fadeDur, hpf, denoise, denoiseQuality, autoLevel, declip, enhance, dereverb } })
+    }, 500)
+    return () => clearTimeout(timer)
   }, [mode, formatOut, rate, outDir, labels, chanVols, normalize, trim, fade, fadeDur, hpf, denoise, denoiseQuality, autoLevel, declip, enhance, dereverb, prefsReady])
 
   return {

@@ -159,6 +159,7 @@ export default function PlayerTab() {
                       className="w-8 h-8 rounded-full flex items-center justify-center text-[hsl(var(--text2))] transition-colors hover:bg-secondary hover:text-foreground"
                       onClick={() => skip(-1)}
                       title="Previous"
+                      aria-label="Previous track"
                     >
                       <SkipBack size={14} fill="currentColor" />
                     </button>
@@ -166,6 +167,7 @@ export default function PlayerTab() {
                       className="w-11 h-11 bg-primary text-white rounded-full flex items-center justify-center transition-colors hover:bg-gold-hi"
                       onClick={toggle}
                       title={playing ? 'Pause' : 'Play'}
+                      aria-label={playing ? 'Pause' : 'Play'}
                     >
                       {playing
                         ? <Pause size={16} fill="currentColor" />
@@ -175,6 +177,7 @@ export default function PlayerTab() {
                       className="w-8 h-8 rounded-full flex items-center justify-center text-[hsl(var(--text2))] transition-colors hover:bg-secondary hover:text-foreground"
                       onClick={() => skip(1)}
                       title="Next"
+                      aria-label="Next track"
                     >
                       <SkipForward size={14} fill="currentColor" />
                     </button>
@@ -183,6 +186,7 @@ export default function PlayerTab() {
                   <button
                     className="w-8 h-8 rounded-full flex items-center justify-center text-[hsl(var(--text2))] transition-colors hover:bg-secondary hover:text-foreground"
                     title="Add bookmark at current position"
+                    aria-label="Add bookmark"
                     onClick={() => {
                       if (!activeTrack || !currentTime) return
                       setBookmarks(prev => [...prev, {
@@ -218,10 +222,12 @@ export default function PlayerTab() {
                       </button>
                       <button
                         className="text-[hsl(var(--sub))] hover:text-destructive transition-colors"
-                        onClick={() => setBookmarks(prev => prev.filter((_, j) => {
-                          const trackBookmarks = prev.filter(bb => bb.trackPath === activeTrack.path)
-                          return trackBookmarks[i] !== prev[j] || prev[j].trackPath !== activeTrack.path
-                        }))}
+                        aria-label="Remove bookmark"
+                        onClick={() => {
+                          const trackBms = bookmarks.filter(b => b.trackPath === activeTrack.path)
+                          const toRemove = trackBms[i]
+                          setBookmarks(prev => prev.filter(b => b !== toRemove))
+                        }}
                       >
                         <X size={10} />
                       </button>
@@ -301,6 +307,7 @@ export default function PlayerTab() {
                     )}
                     <button
                       className="text-[hsl(var(--sub))] opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive shrink-0"
+                      aria-label="Remove track"
                       onClick={e => { e.stopPropagation(); removeTrack(t.path) }}
                     >
                       <X size={9} />

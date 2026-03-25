@@ -98,7 +98,12 @@ pub(crate) async fn detect_sync(
     let coarse_stride = 1600;
     let search_range = max_offset.min(samples_b.len());
 
-    for offset in (-(search_range as i64)..search_range as i64).step_by(coarse_stride) {
+    let neg_range = -(search_range as i64);
+    let pos_range = search_range as i64;
+    let mut coarse_offset = neg_range;
+    while coarse_offset < pos_range {
+        let offset = coarse_offset;
+        coarse_offset += coarse_stride as i64;
         let corr = cross_correlate(segment_a, &samples_b, offset, search_len);
         if corr > best_corr {
             best_corr = corr;

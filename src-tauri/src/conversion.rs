@@ -162,7 +162,10 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
         "stereo" => {
             let dst = unique_path(&out_dir.join(format!("{}{}", base, ext)));
             let num_ch = probe_channels(app, effective_feed, &input_codec).await;
-            let weight = if num_ch > 0 { 1.0 / num_ch as f64 } else { 0.25 };
+            if num_ch == 0 {
+                return Err("Cannot create stereo mix: input has 0 audio channels".into());
+            }
+            let weight = 1.0 / num_ch as f64;
 
             // Use auto-level gains if available, otherwise use manual chan_vols
             let vols: Vec<f64> = if job.auto_level {
@@ -204,7 +207,7 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
         }
 
         "split" => {
-            let num_ch = probe_channels(app, feed, &input_codec).await;
+            let num_ch = probe_channels(app, effective_feed, &input_codec).await;
             let labels: Vec<String> = (0..num_ch as usize).map(|i| {
                 let raw = job.labels.get(i).map(|s| s.as_str()).unwrap_or("");
                 let sl = safe_label(raw);

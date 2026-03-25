@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use hound::{SampleFormat, WavReader, WavSpec, WavWriter};
 use nnnoiseless::DenoiseState;
 use tauri_plugin_shell::ShellExt;
 use uuid::Uuid;
@@ -15,91 +14,6 @@ use crate::types::AudioBuffer;
 
 /// Frame size expected by RNNoise (480 samples at 48 kHz = 10 ms).
 const FRAME_SIZE: usize = DenoiseState::FRAME_SIZE;
-
-/// Denoise a WAV file and write the result to a temp WAV file.
-/// Returns the path to the denoised temp file.
-///
-/// The input must be a PCM WAV file (decode with FFmpeg first if needed).
-/// Deprecated: prefer `denoise_buffer()` for in-memory processing.
-#[allow(dead_code)]
-pub(crate) fn denoise_wav(input: &Path) -> Result<PathBuf, String> {
-    let reader = WavReader::open(input).map_err(|e| format!("Failed to open WAV: {}", e))?;
-    let spec = reader.spec();
-    let channels = spec.channels as usize;
-    let sample_rate = spec.sample_rate;
-
-    // RNNoise expects 48 kHz. If the input is different, we skip denoising
-    // and return the original path (FFmpeg can resample before this step).
-    if sample_rate != 48000 {
-        return Err(format!(
-            "Denoise requires 48 kHz input, got {} Hz. Resample first.",
-            sample_rate
-        ));
-    }
-
-    // Read all samples as f32
-    let samples: Vec<f32> = match spec.sample_format {
-        SampleFormat::Int => reader
-            .into_samples::<i32>()
-            .map(|s| s.unwrap_or(0) as f32 / i32::MAX as f32)
-            .collect(),
-        SampleFormat::Float => reader
-            .into_samples::<f32>()
-            .map(|s| s.unwrap_or(0.0))
-            .collect(),
-    };
-
-    // De-interleave into per-channel buffers
-    let total_frames = samples.len() / channels;
-    let mut channel_bufs: Vec<Vec<f32>> = (0..channels)
-        .map(|ch| {
-            (0..total_frames)
-                .map(|f| samples[f * channels + ch])
-                .collect()
-        })
-        .collect();
-
-    // Process each channel through RNNoise
-    for buf in &mut channel_bufs {
-        denoise_channel(buf);
-    }
-
-    // Re-interleave
-    let mut output_samples = Vec::with_capacity(samples.len());
-    for frame in 0..total_frames {
-        for ch in 0..channels {
-            output_samples.push(channel_bufs[ch][frame]);
-        }
-    }
-
-    // Write to temp WAV
-    let tmp = std::env::temp_dir().join(format!(
-        "depoaudio_denoised_{}.wav",
-        Uuid::new_v4().to_string().replace('-', "")
-    ));
-
-    let out_spec = WavSpec {
-        channels: spec.channels,
-        sample_rate,
-        bits_per_sample: 32,
-        sample_format: SampleFormat::Float,
-    };
-
-    let mut writer =
-        WavWriter::create(&tmp, out_spec).map_err(|e| format!("Failed to create WAV: {}", e))?;
-
-    for &sample in &output_samples {
-        writer
-            .write_sample(sample)
-            .map_err(|e| format!("Write error: {}", e))?;
-    }
-
-    writer
-        .finalize()
-        .map_err(|e| format!("Finalize error: {}", e))?;
-
-    Ok(tmp)
-}
 
 /// Denoise an AudioBuffer in-place. Expects 48kHz input.
 pub(crate) fn denoise_buffer(buf: &mut AudioBuffer) -> Result<(), String> {
@@ -131,6 +45,11 @@ fn denoise_channel(samples: &mut Vec<f32>) {
 
     for i in 0..num_frames {
         let offset = i * FRAME_SIZE;
+
+        // Bounds check: ensure we have a full frame available
+        if offset + FRAME_SIZE > samples.len() {
+            break;
+        }
 
         // RNNoise expects samples in [-32768, 32767] range (i16 scale)
         let mut input_frame = [0.0f32; FRAME_SIZE];

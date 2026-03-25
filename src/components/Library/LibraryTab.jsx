@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { Search, Download, ChevronDown, ChevronRight, Pencil, Archive, RotateCcw, X, Briefcase } from 'lucide-react'
 import { cn } from '../../lib/utils'
@@ -37,7 +37,7 @@ export default function LibraryTab({ cases, setCases, search, setSearch, labels,
     setScanningCat(false)
   }
 
-  const filtered = cases
+  const filtered = useMemo(() => cases
     .filter(c => showArchived ? c.archived : !c.archived)
     .filter(c => {
       if (!search.trim()) return true
@@ -45,7 +45,7 @@ export default function LibraryTab({ cases, setCases, search, setSearch, labels,
       return c.name.toLowerCase().includes(q) ||
         c.sessions.some(s => s.sourceName?.toLowerCase().includes(q) ||
           s.participants.some(p => p.label.toLowerCase().includes(q)))
-    })
+    }), [cases, showArchived, search])
 
   const toggleCase = (id) => setExpandedCases(p => ({...p, [id]: !p[id]}))
 
@@ -203,6 +203,7 @@ export default function LibraryTab({ cases, setCases, search, setSearch, labels,
                   size="icon"
                   className="h-7 w-7"
                   title="Rename"
+                  aria-label="Rename case"
                   onClick={() => { setEditingCase(c.id); setEditName(c.name) }}
                 >
                   <Pencil size={12} />
@@ -212,6 +213,7 @@ export default function LibraryTab({ cases, setCases, search, setSearch, labels,
                   size="icon"
                   className="h-7 w-7"
                   title={c.archived ? 'Unarchive' : 'Archive'}
+                  aria-label={c.archived ? 'Unarchive case' : 'Archive case'}
                   onClick={() => archiveCase(c.id, !c.archived)}
                 >
                   {c.archived ? <RotateCcw size={12} /> : <Archive size={12} />}
@@ -221,6 +223,7 @@ export default function LibraryTab({ cases, setCases, search, setSearch, labels,
                   size="icon"
                   className="h-7 w-7 hover:text-destructive"
                   title="Delete"
+                  aria-label="Delete case"
                   onClick={() => deleteCase(c.id)}
                 >
                   <X size={12} />

@@ -40,18 +40,25 @@ export default function ConvertTab({
     setScanning(true)
     setScanProgress({ current: 0, total: files.length, fileName: '' })
     try {
-      // Scan all files and aggregate results
-      const results = []
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
-        setScanProgress({ current: i + 1, total: files.length, fileName: file.name })
-        try {
-          const result = await invoke('analyze_audio_cmd', { path: file.path })
-          results.push(result)
-        } catch (e) {
-          // Skip files that fail analysis
-        }
-      }
+      // Scan all files in parallel and aggregate results
+      let completed = 0
+      const promises = files.map(file =>
+        invoke('analyze_audio_cmd', { path: file.path })
+          .then(result => {
+            completed++
+            setScanProgress({ current: completed, total: files.length, fileName: file.name })
+            return result
+          })
+          .catch(() => {
+            completed++
+            setScanProgress({ current: completed, total: files.length, fileName: file.name })
+            return null
+          })
+      )
+      const settled = await Promise.allSettled(promises)
+      const results = settled
+        .map(s => s.value)
+        .filter(Boolean)
 
       if (results.length > 0) {
         // Aggregate: use worst-case across all files

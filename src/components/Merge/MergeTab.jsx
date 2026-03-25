@@ -134,6 +134,7 @@ export default function MergeTab() {
                     )}
                     <button
                       className="text-[hsl(var(--sub))] opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive shrink-0"
+                      aria-label="Remove source"
                       onClick={() => removeSource(i)}
                     >
                       <X size={9} />

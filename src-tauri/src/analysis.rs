@@ -146,6 +146,18 @@ pub(crate) async fn analyze_audio(
         Err(_) => None,
     };
 
+    // Note when AI models are missing so the user knows results may be incomplete
+    let mut missing_models = Vec::new();
+    if vad_result.is_none() { missing_models.push("VAD"); }
+    if quality_score.is_none() { missing_models.push("quality scoring"); }
+    if speaker_count.is_none() { missing_models.push("speaker detection"); }
+    if !missing_models.is_empty() {
+        recommendations.push(format!(
+            "Some AI models not available ({}) — results may be incomplete",
+            missing_models.join(", ")
+        ));
+    }
+
     Ok(AnalysisResult {
         channels,
         duration,

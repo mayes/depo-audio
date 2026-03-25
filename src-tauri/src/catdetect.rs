@@ -61,7 +61,7 @@ pub(crate) fn detect_cat_software() -> Vec<CatSoftware> {
     for profile in &profiles {
         for search_path in &profile.search_paths {
             if search_path.exists() && search_path.is_dir() {
-                let job_count = count_audio_files(search_path, profile.extensions);
+                let job_count = count_audio_files(search_path, profile.extensions, 0);
                 if job_count > 0 {
                     found.push(CatSoftware {
                         name: profile.name.into(),
@@ -240,7 +240,13 @@ fn build_profiles() -> Vec<CatProfile> {
     ]
 }
 
-fn count_audio_files(dir: &Path, extensions: &[&str]) -> usize {
+/// Max recursion depth for directory traversal to prevent runaway scanning.
+const MAX_SCAN_DEPTH: usize = 5;
+
+fn count_audio_files(dir: &Path, extensions: &[&str], depth: usize) -> usize {
+    if depth >= MAX_SCAN_DEPTH {
+        return 0;
+    }
     let mut count = 0;
     if let Ok(entries) = fs::read_dir(dir) {
         for entry in entries.flatten() {
@@ -252,7 +258,7 @@ fn count_audio_files(dir: &Path, extensions: &[&str]) -> usize {
                     }
                 }
             } else if path.is_dir() {
-                count += count_audio_files(&path, extensions);
+                count += count_audio_files(&path, extensions, depth + 1);
             }
         }
     }

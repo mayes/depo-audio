@@ -52,11 +52,6 @@ pub(crate) async fn probe_channels(app: &AppHandle, feed: &Path, input_codec: &[
 
 // ── Filter chain builder ─────────────────────────────────────────────────────
 
-#[allow(dead_code)]
-pub(crate) async fn build_proc_filters(app: &AppHandle, opts: &ConvertJob, feed: &Path, input_codec: &[String]) -> Vec<String> {
-    build_proc_filters_with_gain(app, opts, feed, input_codec, None).await
-}
-
 /// Build the processing filter chain, optionally injecting a computed gain
 /// value from auto-leveling analysis.
 pub(crate) async fn build_proc_filters_with_gain(
@@ -101,8 +96,11 @@ pub(crate) async fn build_proc_filters_with_gain(
 
 // ── Run FFmpeg sidecar ────────────────────────────────────────────────────────
 
+/// Maximum time allowed for a single FFmpeg process before it is killed (5 minutes).
+const FFMPEG_TIMEOUT_SECS: u64 = 300;
+
 pub(crate) async fn run_ffmpeg(app: &AppHandle, args: Vec<String>, job_id: &str) -> Result<(), String> {
-    let (mut rx, _child) = app
+    let (mut rx, child) = app
         .shell()
         .sidecar(ffmpeg_bin_name())
         .map_err(|e| e.to_string())?
@@ -112,8 +110,16 @@ pub(crate) async fn run_ffmpeg(app: &AppHandle, args: Vec<String>, job_id: &str)
 
     let mut stderr_acc = String::new();
     let time_re = Regex::new(r"time=(\d+):(\d+):(\d+\.\d+)").unwrap();
+    let started = std::time::Instant::now();
+    let timeout = std::time::Duration::from_secs(FFMPEG_TIMEOUT_SECS);
 
     while let Some(event) = rx.recv().await {
+        // Check for timeout on each event
+        if started.elapsed() > timeout {
+            let _ = child.kill();
+            return Err("FFmpeg process timed out after 5 minutes and was killed".into());
+        }
+
         match event {
             CommandEvent::Stderr(bytes) => {
                 let line = String::from_utf8_lossy(&bytes).to_string();

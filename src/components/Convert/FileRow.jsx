@@ -46,6 +46,7 @@ export default function FileRow({ file, job, onRemove, converting }) {
           <StatusChip status={status} />
           {!converting && (
             <button className="w-5 h-5 rounded flex items-center justify-center text-[hsl(var(--sub))] hover:text-destructive hover:bg-destructive/10 transition-colors"
+              aria-label="Remove file"
               onClick={onRemove}>
               <X size={9} />
             </button>
@@ -66,7 +67,7 @@ export default function FileRow({ file, job, onRemove, converting }) {
       )}
       {status === 'done' && job.outputs?.length > 0 && (
         <div className="px-3 pb-2.5 flex flex-col gap-0.5">
-          {job.outputs.map((out, i) => <MiniPlayer key={i} out={out} color={CH_COLORS[i%4]} multi={job.outputs.length > 1} />)}
+          {job.outputs.map((out, i) => <MiniPlayer key={out.path} out={out} color={CH_COLORS[i%4]} multi={job.outputs.length > 1} />)}
           {job.outputs.length > 1 && (
             <button className="flex items-center gap-1 text-[10px] text-[hsl(var(--sub))] hover:text-foreground transition-colors mt-1 self-start"
               onClick={() => invoke('show_in_folder', { path: job.outputs[0].path }).catch(() => {})}>
