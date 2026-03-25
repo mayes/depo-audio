@@ -33,14 +33,18 @@ export default function ConvertTab({
   const anyAi = denoise || autoLevel || declip || enhance || dereverb
   const [analysis, setAnalysis] = useState(null)
   const [scanning, setScanning] = useState(false)
+  const [scanProgress, setScanProgress] = useState({ current: 0, total: 0, fileName: '' })
 
   const handleScan = async () => {
     if (!files.length || scanning) return
     setScanning(true)
+    setScanProgress({ current: 0, total: files.length, fileName: '' })
     try {
       // Scan all files and aggregate results
       const results = []
-      for (const file of files) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        setScanProgress({ current: i + 1, total: files.length, fileName: file.name })
         try {
           const result = await invoke('analyze_audio_cmd', { path: file.path })
           results.push(result)
@@ -128,53 +132,36 @@ export default function ConvertTab({
             </CardContent>
           </Card>
 
-          {/* ── CHANNEL LABELS ──────────────────────────────────────────── */}
+          {/* ── CHANNELS (labels + mix) ────────────────────────────────── */}
           <Card>
             <CardHeader>
-              <CardTitle>CHANNEL LABELS</CardTitle>
+              <CardTitle>CHANNELS</CardTitle>
               <span className="text-[10px] text-[hsl(var(--sub))]">
-                {mode === 'split'  && 'Used as output filenames when splitting channels'}
-                {mode === 'stereo' && 'Labels shown in mix sliders below'}
-                {mode === 'keep'   && 'Labels saved to library for reference'}
+                {mode === 'stereo' && autoLevel && 'Name channels — volume managed by auto-level'}
+                {mode === 'stereo' && !autoLevel && 'Name channels and adjust mix volumes'}
+                {mode === 'split' && 'Channel names used as output filenames'}
+                {mode === 'keep' && 'Channel names saved to library for reference'}
               </span>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-4 gap-2 p-3">
+              <div className="flex flex-col gap-1 p-3">
                 {labels.map((l,i) => (
-                  <div key={i} className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{background:CH_COLORS[i]}} />
-                    <span className="font-mono text-[10px] text-[hsl(var(--sub))] shrink-0">CH {i+1}</span>
-                    <Input className="h-7 text-[11px]" value={l} maxLength={24} placeholder={`Channel ${i+1}`}
-                      onChange={e => setLabels(p => p.map((v,j) => j===i ? e.target.value:v))} />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* ── CHANNEL MIX ─────────────────────────────────────────────── */}
-          <Card className={mode !== 'stereo' || autoLevel ? 'opacity-50' : ''}>
-            <CardHeader>
-              <CardTitle>CHANNEL MIX</CardTitle>
-              {autoLevel
-                ? <span className="text-[10px] text-[hsl(var(--sub))] italic">Managed by Balance Speaker Volume above</span>
-                : mode !== 'stereo'
-                  ? <span className="text-[10px] text-[hsl(var(--sub))] italic">Active in Mix to Stereo mode</span>
-                  : <span className="text-[10px] text-[hsl(var(--sub))]">Per-channel volume — 1.0 = unity, 0.0 = mute, 2.0 = boost</span>
-              }
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-1.5 p-3">
-                {chanVols.map((v,i) => (
-                  <div key={i} className={`flex items-center gap-2 ${mode !== 'stereo' || autoLevel ? 'opacity-50' : ''}`}>
+                  <div key={i} className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full shrink-0" style={{background:CH_COLORS[i]}} />
-                    <span className="text-[11px] text-[hsl(var(--text2))] w-24 truncate">{labels[i]||`CH ${i+1}`}</span>
-                    <input type="range" min="0" max="2" step="0.05" value={autoLevel ? 1.0 : v}
-                      className="flex-1 h-1 accent-primary cursor-pointer"
-                      style={{'--fill':`${((autoLevel ? 1.0 : v)/2)*100}%`}}
-                      disabled={mode !== 'stereo' || autoLevel}
-                      onChange={e => setChanVols(p => p.map((x,j) => j===i ? parseFloat(e.target.value):x))} />
-                    <span className="font-mono text-[10px] text-[hsl(var(--sub))] w-8 text-right">{autoLevel ? 'auto' : v===0?'mute':v.toFixed(2)}</span>
+                    <span className="font-mono text-[10px] text-[hsl(var(--sub))] shrink-0 w-7">CH {i+1}</span>
+                    <Input className="h-7 text-[11px] w-32 shrink-0" value={l} maxLength={24} placeholder={`Channel ${i+1}`}
+                      onChange={e => setLabels(p => p.map((v,j) => j===i ? e.target.value:v))} />
+                    {mode === 'stereo' && (
+                      <>
+                        <input type="range" min="0" max="2" step="0.05" value={autoLevel ? 1.0 : chanVols[i]}
+                          className={`flex-1 h-1 accent-primary cursor-pointer ${autoLevel ? 'opacity-40' : ''}`}
+                          disabled={autoLevel}
+                          onChange={e => setChanVols(p => p.map((x,j) => j===i ? parseFloat(e.target.value):x))} />
+                        <span className={`font-mono text-[10px] w-8 text-right shrink-0 ${autoLevel ? 'text-primary' : 'text-[hsl(var(--sub))]'}`}>
+                          {autoLevel ? 'auto' : chanVols[i]===0 ? 'mute' : chanVols[i].toFixed(2)}
+                        </span>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
@@ -196,9 +183,16 @@ export default function ConvertTab({
               )}
 
               {scanning && (
-                <p className="px-4 py-2.5 text-[11px] text-[hsl(var(--sub))] flex items-center gap-1.5">
-                  <Loader2 className="animate-spin h-3.5 w-3.5" /> Listening to your audio…
-                </p>
+                <div className="px-4 py-2.5">
+                  <p className="text-[11px] text-[hsl(var(--sub))] flex items-center gap-1.5 mb-1.5">
+                    <Loader2 className="animate-spin h-3.5 w-3.5" />
+                    Scanning {scanProgress.current} of {scanProgress.total}
+                    {scanProgress.fileName && <span className="text-[hsl(var(--text2))] truncate max-w-[200px]">— {scanProgress.fileName}</span>}
+                  </p>
+                  <div className="w-full h-1 bg-border rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full transition-all duration-300" style={{width: `${scanProgress.total > 0 ? (scanProgress.current / scanProgress.total) * 100 : 0}%`}} />
+                  </div>
+                </div>
               )}
 
               {analysis && (
@@ -382,7 +376,7 @@ export default function ConvertTab({
             onClick={browseFiles}>
             <WaveformIcon />
             <p className="text-[13px] font-semibold text-foreground">Drop audio files here</p>
-            <p className="text-[11px] text-[hsl(var(--sub))] text-center">or <span className="text-primary cursor-pointer hover:underline">click to browse</span> — WAV · MP3 · FLAC · Opus · M4A · OGG · SGMCA · TRM · BWF and more</p>
+            <p className="text-[11px] text-[hsl(var(--sub))] text-center">or <span className="text-primary cursor-pointer hover:underline">click to browse</span> — MP3 · WAV · FLAC · M4A · OGG · Opus · WMA + court formats (SGMCA · TRM · BWF)</p>
           </div>
 
           {files.length > 0 && (

@@ -1,7 +1,74 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
+
+// ── In-memory audio buffer ───────────────────────────────────────────────────
+
+/// In-memory PCM audio buffer for passing between processing stages.
+/// Eliminates temp WAV files in the pipeline.
+pub struct AudioBuffer {
+    pub samples: Vec<f32>,   // interleaved samples
+    pub channels: u16,
+    pub sample_rate: u32,
+}
+
+impl AudioBuffer {
+    /// Read a WAV file into an AudioBuffer
+    pub fn from_wav(path: &Path) -> Result<Self, String> {
+        let reader = hound::WavReader::open(path)
+            .map_err(|e| format!("WAV read error: {}", e))?;
+        let spec = reader.spec();
+        let samples: Vec<f32> = match spec.sample_format {
+            hound::SampleFormat::Int => reader
+                .into_samples::<i32>()
+                .map(|s| s.unwrap_or(0) as f32 / i32::MAX as f32)
+                .collect(),
+            hound::SampleFormat::Float => reader
+                .into_samples::<f32>()
+                .map(|s| s.unwrap_or(0.0))
+                .collect(),
+        };
+        Ok(Self { samples, channels: spec.channels, sample_rate: spec.sample_rate })
+    }
+
+    /// Write AudioBuffer to a WAV file
+    pub fn to_wav(&self, path: &Path) -> Result<(), String> {
+        let spec = hound::WavSpec {
+            channels: self.channels,
+            sample_rate: self.sample_rate,
+            bits_per_sample: 32,
+            sample_format: hound::SampleFormat::Float,
+        };
+        let mut writer = hound::WavWriter::create(path, spec)
+            .map_err(|e| format!("WAV write error: {}", e))?;
+        for &s in &self.samples {
+            writer.write_sample(s).map_err(|e| format!("Write error: {}", e))?;
+        }
+        writer.finalize().map_err(|e| format!("Finalize error: {}", e))?;
+        Ok(())
+    }
+
+    /// De-interleave into per-channel buffers
+    pub fn channels_split(&self) -> Vec<Vec<f32>> {
+        let ch = self.channels as usize;
+        let frames = self.samples.len() / ch;
+        (0..ch).map(|c| (0..frames).map(|f| self.samples[f * ch + c]).collect()).collect()
+    }
+
+    /// Re-interleave from per-channel buffers
+    pub fn from_channels(channel_bufs: &[Vec<f32>], sample_rate: u32) -> Self {
+        let ch = channel_bufs.len();
+        let frames = channel_bufs.first().map(|b| b.len()).unwrap_or(0);
+        let mut samples = Vec::with_capacity(frames * ch);
+        for f in 0..frames {
+            for c in 0..ch {
+                samples.push(channel_bufs[c].get(f).copied().unwrap_or(0.0));
+            }
+        }
+        Self { samples, channels: ch as u16, sample_rate }
+    }
+}
 
 // ── Conversion types ─────────────────────────────────────────────────────────
 

@@ -5,6 +5,8 @@ use nnnoiseless::DenoiseState;
 use tauri_plugin_shell::ShellExt;
 use uuid::Uuid;
 
+use crate::types::AudioBuffer;
+
 // ── Audio denoising via nnnoiseless (RNNoise) ───────────────────────────────
 //
 // Processes audio through a neural noise gate that suppresses background noise
@@ -18,6 +20,8 @@ const FRAME_SIZE: usize = DenoiseState::FRAME_SIZE;
 /// Returns the path to the denoised temp file.
 ///
 /// The input must be a PCM WAV file (decode with FFmpeg first if needed).
+/// Deprecated: prefer `denoise_buffer()` for in-memory processing.
+#[allow(dead_code)]
 pub(crate) fn denoise_wav(input: &Path) -> Result<PathBuf, String> {
     let reader = WavReader::open(input).map_err(|e| format!("Failed to open WAV: {}", e))?;
     let spec = reader.spec();
@@ -95,6 +99,19 @@ pub(crate) fn denoise_wav(input: &Path) -> Result<PathBuf, String> {
         .map_err(|e| format!("Finalize error: {}", e))?;
 
     Ok(tmp)
+}
+
+/// Denoise an AudioBuffer in-place. Expects 48kHz input.
+pub(crate) fn denoise_buffer(buf: &mut AudioBuffer) -> Result<(), String> {
+    if buf.sample_rate != 48000 {
+        return Err(format!("Denoise requires 48kHz, got {}Hz", buf.sample_rate));
+    }
+    let mut channel_bufs = buf.channels_split();
+    for ch_buf in &mut channel_bufs {
+        denoise_channel(ch_buf);
+    }
+    *buf = AudioBuffer::from_channels(&channel_bufs, buf.sample_rate);
+    Ok(())
 }
 
 /// Process a single channel through RNNoise.

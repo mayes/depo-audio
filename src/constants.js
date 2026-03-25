@@ -15,11 +15,21 @@ export const FORMATS_OUT = [
 export const CH_COLORS = ['#c49a36','#4a8fdf','#3a9e6a','#c94e4e']
 
 export const FORMAT_ROWS = [
-  { ext: '.sgmca',                  vendor: 'Stenograph · Case CATalyst',          ch: '4 ch',   status: 'supported' },
-  { ext: '.trm  .ftr',              vendor: 'For The Record · FTR Gold',            ch: '4–16 ch',status: 'experimental' },
-  { ext: '.bwf',                    vendor: 'CourtSmart · Various',                 ch: 'varies', status: 'supported' },
-  { ext: '.dm',                     vendor: 'Stenovations · DigitalCAT',            ch: '—',      status: 'experimental' },
-  { ext: '.aes',                    vendor: 'Eclipse CAT · AudioSync',              ch: '—',      status: 'unsupported' },
-  { ext: '.dcr',                    vendor: 'High Criteria · Liberty',              ch: '—',      status: 'unsupported' },
-  { ext: '.wav  .mp3  .wma  .m4a  .ogg  .opus  .flac  +more', vendor: 'Eclipse · ProCAT · StenoCAT · Standard', ch: 'any', status: 'supported' },
+  // Standard formats — play and import directly, convert optionally
+  { ext: '.wav',                    vendor: 'Standard PCM',                         ch: 'any',    status: 'supported',     group: 'standard' },
+  { ext: '.mp3',                    vendor: 'Standard',                             ch: 'any',    status: 'supported',     group: 'standard' },
+  { ext: '.flac',                   vendor: 'Standard Lossless',                    ch: 'any',    status: 'supported',     group: 'standard' },
+  { ext: '.m4a  .aac',              vendor: 'Apple / Standard AAC',                 ch: 'any',    status: 'supported',     group: 'standard' },
+  { ext: '.ogg  .opus',             vendor: 'Standard / Voice-optimized',           ch: 'any',    status: 'supported',     group: 'standard' },
+  { ext: '.wma  .aif  .aiff',       vendor: 'Windows Media / Apple AIFF',           ch: 'any',    status: 'supported',     group: 'standard' },
+  // Court reporting formats — require conversion
+  { ext: '.sgmca',                  vendor: 'Stenograph · Case CATalyst',           ch: '4 ch',   status: 'supported',     group: 'court' },
+  { ext: '.trm  .ftr',              vendor: 'For The Record · FTR Gold',            ch: '4–16 ch',status: 'experimental',  group: 'court' },
+  { ext: '.bwf',                    vendor: 'CourtSmart · Various',                 ch: 'varies', status: 'supported',     group: 'court' },
+  { ext: '.dm',                     vendor: 'Stenovations · DigitalCAT',            ch: '—',      status: 'experimental',  group: 'court' },
+  { ext: '.aes',                    vendor: 'Eclipse CAT · AudioSync',              ch: '—',      status: 'unsupported',   group: 'court' },
+  { ext: '.dcr',                    vendor: 'High Criteria · Liberty',              ch: '—',      status: 'unsupported',   group: 'court' },
 ]
+
+/// Standard formats that can be played/imported without conversion
+export const STANDARD_EXTS = new Set(['wav','mp3','flac','m4a','aac','ogg','opus','wma','aif','aiff'])

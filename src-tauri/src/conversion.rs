@@ -3,13 +3,15 @@ use std::path::{Path, PathBuf};
 
 use tauri::{AppHandle, Emitter};
 
+use uuid::Uuid;
+
 use crate::analysis::analyze_audio;
-use crate::denoise::{decode_to_wav_48k, denoise_deep_filter, denoise_wav};
+use crate::denoise::{decode_to_wav_48k, denoise_buffer, denoise_deep_filter};
 use crate::dereverb;
-use crate::enhance::enhance_bandwidth;
+use crate::enhance::enhance_buffer;
 use crate::ffmpeg::{build_proc_filters_with_gain, probe_channels, run_ffmpeg};
 use crate::helpers::{basename, detect_format_for_path, output_args, output_ext, safe_label, strip_sgmca_header, unique_path};
-use crate::types::{ConvertJob, FormatInfo, OutputFile, ProgressEvent};
+use crate::types::{AudioBuffer, ConvertJob, FormatInfo, OutputFile, ProgressEvent};
 
 // ── Conversion orchestration ─────────────────────────────────────────────────
 
@@ -58,7 +60,9 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
     let out_codec = output_args(&job.format, &job.rate);
 
     // ── AI pre-processing step ──────────────────────────────────────────────
-    // Runs Rust-native AI processing before the FFmpeg pipeline.
+    // Uses in-memory AudioBuffer pipeline to eliminate intermediate temp WAV files.
+    // Pattern: decode → temp WAV → read to buffer → delete temp → process in memory
+    //        → write single temp WAV → FFmpeg.
     let mut ai_feed = feed.to_path_buf();
     let mut ai_temps: Vec<crate::safety::TempFile> = Vec::new();
     let mut channel_gains: Option<Vec<f64>> = None;
@@ -83,60 +87,54 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
             id: job.id.clone(), seconds: 0.0, phase: Some("processing".into()),
         });
 
-        // Denoise: route based on quality setting
+        // Decode input to 48kHz WAV, read into AudioBuffer, delete temp immediately
+        let decoded_wav = decode_to_wav_48k(app, &ai_feed).await?;
+        let mut audio_buf = AudioBuffer::from_wav(&decoded_wav)?;
+        let _ = fs::remove_file(&decoded_wav);
+
+        // Denoise in-memory: route based on quality setting
         if job.denoise {
             if job.denoise_quality == "best" {
                 // DeepFilterNet3 — best quality, uses ONNX models
+                // DFN3 still uses file-based path (complex STFT pipeline)
+                // Write buffer to temp, run DFN3, read result back
                 match denoise_deep_filter(app, &ai_feed).await {
                     Ok(denoised) => {
-                        ai_temps.push(crate::safety::TempFile::new(denoised.clone()));
-                        ai_feed = denoised;
+                        match AudioBuffer::from_wav(&denoised) {
+                            Ok(buf) => { audio_buf = buf; }
+                            Err(_) => {} // Keep current buffer on read failure
+                        }
+                        let _ = fs::remove_file(&denoised);
                     }
                     Err(_) => {
-                        // Fall back to RNNoise if DFN3 fails
-                        let decoded = decode_to_wav_48k(app, &ai_feed).await?;
-                        ai_temps.push(crate::safety::TempFile::new(decoded.clone()));
-                        match denoise_wav(&decoded) {
-                            Ok(d) => { ai_temps.push(crate::safety::TempFile::new(d.clone())); ai_feed = d; }
-                            Err(_) => { ai_feed = decoded; }
-                        }
+                        // Fall back to RNNoise in-memory
+                        let _ = denoise_buffer(&mut audio_buf);
                     }
                 }
             } else {
-                // RNNoise — fast, lightweight
-                let decoded = decode_to_wav_48k(app, &ai_feed).await?;
-                ai_temps.push(crate::safety::TempFile::new(decoded.clone()));
-                match denoise_wav(&decoded) {
-                    Ok(denoised) => {
-                        ai_temps.push(crate::safety::TempFile::new(denoised.clone()));
-                        ai_feed = denoised;
-                    }
-                    Err(_) => { ai_feed = decoded; }
-                }
+                // RNNoise — fast, lightweight, fully in-memory
+                let _ = denoise_buffer(&mut audio_buf);
             }
         }
 
-        // De-reverberation: reduce room echo (if DCCRN+ model available)
+        // De-reverberation in-memory (if DCCRN+ model available)
         if job.dereverb {
-            match dereverb::dereverb(app, &ai_feed).await {
-                Ok(dereverbbed) => {
-                    ai_temps.push(crate::safety::TempFile::new(dereverbbed.clone()));
-                    ai_feed = dereverbbed;
-                }
-                Err(_) => {} // Fall through if model not available
-            }
+            let _ = dereverb::dereverb_buffer(app, &mut audio_buf);
         }
 
-        // Bandwidth extension: upscale narrow-band audio to 48 kHz
+        // Bandwidth extension in-memory (if FlashSR model available)
         if job.enhance {
-            match enhance_bandwidth(app, &ai_feed).await {
-                Ok(enhanced) => {
-                    ai_temps.push(crate::safety::TempFile::new(enhanced.clone()));
-                    ai_feed = enhanced;
-                }
-                Err(_) => {} // Fall through on failure
-            }
+            let _ = enhance_buffer(app, &mut audio_buf);
         }
+
+        // Write the processed AudioBuffer to a single temp WAV for FFmpeg encoding
+        let tmp_out = std::env::temp_dir().join(format!(
+            "depoaudio_ai_{}.wav",
+            Uuid::new_v4().to_string().replace('-', "")
+        ));
+        audio_buf.to_wav(&tmp_out)?;
+        ai_temps.push(crate::safety::TempFile::new(tmp_out.clone()));
+        ai_feed = tmp_out;
     }
 
     // Build filter chain — use ai_feed (post-AI) as input to FFmpeg

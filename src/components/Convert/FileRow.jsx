@@ -56,7 +56,7 @@ export default function FileRow({ file, job, onRemove, converting }) {
         <div className="px-3 pb-2.5">
           {job?.phase && (
             <span className="text-[10px] text-[hsl(var(--sub))] block mb-1">
-              {job.phase === 'analyzing' ? 'Listening to audio…' : job.phase === 'processing' ? 'Cleaning up audio…' : 'Converting…'}
+              {job.phase === 'analyzing' ? 'Analyzing audio…' : job.phase === 'processing' ? 'Removing noise…' : `Encoding…`}{job.seconds > 0 ? ` ${Math.round(job.seconds)}s` : ''}
             </span>
           )}
           <div className="w-full h-1 bg-border rounded-full overflow-hidden">

@@ -11,26 +11,45 @@ use crate::types::FormatInfo;
 
 pub(crate) fn get_formats() -> Vec<FormatInfo> {
     vec![
+        // Standard formats — play and import natively, convert optionally
+        FormatInfo { key: "wav".into(), name: "WAV · PCM Audio".into(), vendor: "Standard".into(),
+            status: "supported".into(), handler: "passthrough".into(), channels: None, note: None },
+        FormatInfo { key: "mp3".into(), name: "MP3 Audio".into(), vendor: "Standard".into(),
+            status: "supported".into(), handler: "passthrough".into(), channels: None, note: None },
+        FormatInfo { key: "flac".into(), name: "FLAC Lossless".into(), vendor: "Standard".into(),
+            status: "supported".into(), handler: "passthrough".into(), channels: None, note: None },
+        FormatInfo { key: "m4a".into(), name: "M4A · AAC Audio".into(), vendor: "Standard".into(),
+            status: "supported".into(), handler: "passthrough".into(), channels: None, note: None },
+        FormatInfo { key: "ogg".into(), name: "OGG · Opus Audio".into(), vendor: "Standard".into(),
+            status: "supported".into(), handler: "passthrough".into(), channels: None, note: None },
+        FormatInfo { key: "wma".into(), name: "Windows Media Audio".into(), vendor: "Standard".into(),
+            status: "supported".into(), handler: "passthrough".into(), channels: None, note: None },
+        FormatInfo { key: "aiff".into(), name: "AIFF Audio".into(), vendor: "Standard".into(),
+            status: "supported".into(), handler: "passthrough".into(), channels: None, note: None },
+        // Court reporting formats — require conversion
         FormatInfo { key: "sgmca".into(), name: "Stenograph SGMCA".into(), vendor: "Case CATalyst".into(),
             status: "supported".into(), handler: "sgmca".into(), channels: Some("4".into()), note: None },
         FormatInfo { key: "ftr".into(), name: "FTR Recording".into(), vendor: "For The Record".into(),
             status: "experimental".into(), handler: "ftr".into(), channels: Some("4–16".into()),
             note: Some("FTR uses proprietary AAC codec tag 0x4180. Drop all .trm files for a session together.".into()) },
-        FormatInfo { key: "aes".into(), name: "Eclipse AudioSync".into(), vendor: "Eclipse CAT".into(),
-            status: "unsupported".into(), handler: "rejected".into(), channels: None,
-            note: Some("AES-128 encrypted. Open in Eclipse → File → Export Audio → WAV first.".into()) },
+        FormatInfo { key: "bwf".into(), name: "Broadcast WAV".into(), vendor: "CourtSmart / Various".into(),
+            status: "supported".into(), handler: "passthrough".into(), channels: None, note: None },
         FormatInfo { key: "digitalcat".into(), name: "DigitalCAT Audio".into(), vendor: "Stenovations".into(),
             status: "experimental".into(), handler: "passthrough".into(), channels: None,
             note: Some("No public spec — conversion may fail. Please report results on GitHub.".into()) },
-        FormatInfo { key: "bwf".into(), name: "Broadcast WAV".into(), vendor: "CourtSmart / Various".into(),
-            status: "supported".into(), handler: "passthrough".into(), channels: None, note: None },
+        FormatInfo { key: "aes".into(), name: "Eclipse AudioSync".into(), vendor: "Eclipse CAT".into(),
+            status: "unsupported".into(), handler: "rejected".into(), channels: None,
+            note: Some("AES-128 encrypted. Open in Eclipse → File → Export Audio → WAV first.".into()) },
         FormatInfo { key: "dcr".into(), name: "Liberty Court Recorder".into(), vendor: "High Criteria".into(),
             status: "unsupported".into(), handler: "rejected".into(), channels: None,
             note: Some("DCR files are proprietary. Open in Liberty → File → Export Audio → WAV first.".into()) },
-        FormatInfo { key: "generic".into(), name: "WAV · MP3 · FLAC · WMA · M4A · OGG · Opus + more".into(),
-            vendor: "Eclipse · ProCAT · StenoCAT · Standard".into(),
-            status: "supported".into(), handler: "passthrough".into(), channels: None, note: None },
     ]
+}
+
+/// Check if a file extension is a standard audio format (no conversion needed for basic use)
+#[allow(dead_code)]
+pub(crate) fn is_standard_format(ext: &str) -> bool {
+    matches!(ext, "wav" | "mp3" | "flac" | "m4a" | "aac" | "ogg" | "opus" | "wma" | "aif" | "aiff")
 }
 
 pub(crate) fn detect_format_for_path(path: &str) -> Option<FormatInfo> {
@@ -42,14 +61,22 @@ pub(crate) fn detect_format_for_path(path: &str) -> Option<FormatInfo> {
 
     let fmts = get_formats();
     match ext.as_str() {
-        "sgmca"                                            => fmts.into_iter().find(|f| f.key == "sgmca"),
-        "trm" | "ftr"                                      => fmts.into_iter().find(|f| f.key == "ftr"),
-        "aes"                                              => fmts.into_iter().find(|f| f.key == "aes"),
-        "dm"                                               => fmts.into_iter().find(|f| f.key == "digitalcat"),
-        "dcr"                                              => fmts.into_iter().find(|f| f.key == "dcr"),
-        "bwf"                                              => fmts.into_iter().find(|f| f.key == "bwf"),
-        "wav"|"mp3"|"flac"|"wma"|"m4a"|"aac"|"ogg"|"opus"|"aif"|"aiff" => fmts.into_iter().find(|f| f.key == "generic"),
-        _                                                  => None,
+        // Court formats
+        "sgmca"         => fmts.into_iter().find(|f| f.key == "sgmca"),
+        "trm" | "ftr"   => fmts.into_iter().find(|f| f.key == "ftr"),
+        "aes"           => fmts.into_iter().find(|f| f.key == "aes"),
+        "dm"            => fmts.into_iter().find(|f| f.key == "digitalcat"),
+        "dcr"           => fmts.into_iter().find(|f| f.key == "dcr"),
+        "bwf"           => fmts.into_iter().find(|f| f.key == "bwf"),
+        // Standard formats
+        "wav"           => fmts.into_iter().find(|f| f.key == "wav"),
+        "mp3"           => fmts.into_iter().find(|f| f.key == "mp3"),
+        "flac"          => fmts.into_iter().find(|f| f.key == "flac"),
+        "m4a" | "aac"   => fmts.into_iter().find(|f| f.key == "m4a"),
+        "ogg" | "opus"  => fmts.into_iter().find(|f| f.key == "ogg"),
+        "wma"           => fmts.into_iter().find(|f| f.key == "wma"),
+        "aif" | "aiff"  => fmts.into_iter().find(|f| f.key == "aiff"),
+        _               => None,
     }
 }
 

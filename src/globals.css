@@ -38,6 +38,15 @@
     --blue: 213 65% 58%;
     --topbar-h: 50px;
     --bottom-h: 56px;
+
+    /* Full color values for SVG fill/stroke (can't use bare HSL components) */
+    --color-gold: #c49a36;
+    --color-gold-hi: #d4aa48;
+    --color-gold-dim: rgba(196, 154, 54, 0.14);
+    --color-sub: #4a6080;
+    --color-green: #3a9e6a;
+    --color-red: #c44e4e;
+    --color-blue: #4a8fdf;
   }
 
   .light {
@@ -72,6 +81,14 @@
     --blue: 213 65% 50%;
     --success: 150 46% 36%;
     --warning: 36 73% 38%;
+
+    --color-gold: #9a6e18;
+    --color-gold-hi: #7a5210;
+    --color-gold-dim: rgba(154, 110, 24, 0.1);
+    --color-sub: #7888a0;
+    --color-green: #2d8a58;
+    --color-red: #c44e4e;
+    --color-blue: #3a7cc0;
   }
 
   * {
