@@ -24,6 +24,9 @@ pub(crate) fn get_formats() -> Vec<FormatInfo> {
             note: Some("No public spec — conversion may fail. Please report results on GitHub.".into()) },
         FormatInfo { key: "bwf".into(), name: "Broadcast WAV".into(), vendor: "CourtSmart / Various".into(),
             status: "supported".into(), handler: "passthrough".into(), channels: None, note: None },
+        FormatInfo { key: "dcr".into(), name: "Liberty Court Recorder".into(), vendor: "High Criteria".into(),
+            status: "unsupported".into(), handler: "rejected".into(), channels: None,
+            note: Some("DCR files are proprietary. Open in Liberty → File → Export Audio → WAV first.".into()) },
         FormatInfo { key: "generic".into(), name: "WAV · MP3 · FLAC · WMA · M4A · OGG · Opus + more".into(),
             vendor: "Eclipse · ProCAT · StenoCAT · Standard".into(),
             status: "supported".into(), handler: "passthrough".into(), channels: None, note: None },
@@ -43,6 +46,7 @@ pub(crate) fn detect_format_for_path(path: &str) -> Option<FormatInfo> {
         "trm" | "ftr"                                      => fmts.into_iter().find(|f| f.key == "ftr"),
         "aes"                                              => fmts.into_iter().find(|f| f.key == "aes"),
         "dm"                                               => fmts.into_iter().find(|f| f.key == "digitalcat"),
+        "dcr"                                              => fmts.into_iter().find(|f| f.key == "dcr"),
         "bwf"                                              => fmts.into_iter().find(|f| f.key == "bwf"),
         "wav"|"mp3"|"flac"|"wma"|"m4a"|"aac"|"ogg"|"opus"|"aif"|"aiff" => fmts.into_iter().find(|f| f.key == "generic"),
         _                                                  => None,
@@ -118,6 +122,7 @@ pub(crate) fn output_args(format: &str, rate: &str) -> Vec<String> {
         "mp3"  => vec!["-acodec".into(), "libmp3lame".into(), "-b:a".into(), "192k".into(),  "-ar".into(), rate.into()],
         "flac" => vec!["-c:a".into(), "flac".into(), "-ar".into(), rate.into()],
         "opus" => vec!["-c:a".into(), "libopus".into(), "-b:a".into(), "64k".into(), "-vbr".into(), "on".into(), "-ar".into(), "48000".into()],
+        "m4a"  => vec!["-c:a".into(), "aac".into(), "-b:a".into(), "128k".into(), "-ar".into(), rate.into()],
         _      => vec!["-acodec".into(), "pcm_s16le".into(), "-ar".into(), rate.into()],
     }
 }
@@ -127,6 +132,7 @@ pub(crate) fn output_ext(format: &str) -> &'static str {
         "mp3"  => ".mp3",
         "flac" => ".flac",
         "opus" => ".opus",
+        "m4a"  => ".m4a",
         _      => ".wav",
     }
 }
