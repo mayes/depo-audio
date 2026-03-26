@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { MODES, FORMATS_OUT, CH_COLORS } from '../../constants'
 import { PRESETS } from '../../presets'
@@ -37,31 +37,29 @@ export default function ConvertTab({
   const [analysis, setAnalysis] = useState(null)
   const [scanning, setScanning] = useState(false)
   const [scanProgress, setScanProgress] = useState({ current: 0, total: 0, fileName: '' })
+  const [showAllProcessing, setShowAllProcessing] = useState(false)
+
+  // Clear analysis when files change
+  useEffect(() => { setAnalysis(null); setShowAllProcessing(false) }, [files])
 
   const handleScan = async () => {
     if (!files.length || scanning) return
     setScanning(true)
     setScanProgress({ current: 0, total: files.length, fileName: '' })
     try {
-      // Scan all files in parallel and aggregate results
-      let completed = 0
-      const promises = files.map(file =>
-        invoke('analyze_audio_cmd', { path: file.path })
-          .then(result => {
-            completed++
-            setScanProgress({ current: completed, total: files.length, fileName: file.name })
-            return result
-          })
-          .catch(() => {
-            completed++
-            setScanProgress({ current: completed, total: files.length, fileName: file.name })
-            return null
-          })
-      )
-      const settled = await Promise.allSettled(promises)
-      const results = settled
-        .map(s => s.value)
-        .filter(Boolean)
+      // Scan files one at a time to avoid overwhelming ONNX Runtime
+      const results = []
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        setScanProgress({ current: i, total: files.length, fileName: file.name })
+        try {
+          const result = await invoke('analyze_audio_cmd', { path: file.path })
+          if (result) results.push(result)
+        } catch {
+          // Skip failed files
+        }
+        setScanProgress({ current: i + 1, total: files.length, fileName: file.name })
+      }
 
       if (results.length > 0) {
         // Aggregate: use worst-case across all files
@@ -78,18 +76,13 @@ export default function ConvertTab({
         }
         setAnalysis(aggregated)
 
-        // Auto-enable all recommended processing
+        // Only enable processing that the scan actually recommends
         if (aggregated.needsDenoise) setDenoise(true)
         if (aggregated.needsLeveling) setAutoLevel(true)
         if (aggregated.hasClipping) setDeclip(true)
         if (aggregated.isNarrowband) setEnhance(true)
-        // Smart fine-tune: always enable HPF + normalize for speech
-        setHpf(true)
-        setNormalize(true)
-        // Trim silence if there's significant dead air
-        if (aggregated.speechRatio != null && aggregated.speechRatio < 0.8) setTrim(true)
-        // Fade for clean start/end
-        setFade(true)
+        // Trim silence only if there's significant dead air
+        if (aggregated.speechRatio != null && aggregated.speechRatio < 0.5) setTrim(true)
       }
     } catch (e) {
       console.error('Scan failed:', e)
@@ -230,83 +223,123 @@ export default function ConvertTab({
                 </div>
               )}
 
-              {/* ── Smart (auto-detected) ── */}
-              <div className="px-4 py-1.5 bg-secondary/50">
-                <span className="font-mono text-[9px] font-medium tracking-[1.2px] uppercase text-[hsl(var(--sub))]">SMART</span>
-              </div>
+              {/* ── Recommended (shown after scan, or all if no scan) ── */}
+              {(() => {
+                const hasAnalysis = !!analysis
+                // After scan: only show toggles that are recommended or already enabled
+                const showDenoise   = !hasAnalysis || analysis.needsDenoise || denoise || showAllProcessing
+                const showAutoLevel = !hasAnalysis || analysis.needsLeveling || autoLevel || showAllProcessing
+                const showDeclip    = !hasAnalysis || analysis.hasClipping || declip || showAllProcessing
+                const showEnhance   = !hasAnalysis || analysis.isNarrowband || enhance || showAllProcessing
+                const showDereverb  = !hasAnalysis || dereverb || showAllProcessing
+                const showHpf       = !hasAnalysis || hpf || showAllProcessing
+                const showNormalize = !hasAnalysis || normalize || showAllProcessing
+                const showTrim      = !hasAnalysis || (analysis.speechRatio != null && analysis.speechRatio < 0.5) || trim || showAllProcessing
+                const showFade      = !hasAnalysis || fade || showAllProcessing
 
-              <ProcessingToggle smart name="Remove Background Noise"
-                desc="Cleans up HVAC hum, paper rustling, and room noise"
-                checked={denoise} onChange={setDenoise}
-                detected={analysis?.needsDenoise ? 'Noise detected' : null}
-                extra={denoise && (
-                  <span className="inline-flex items-center gap-1 mt-0.5" onClick={e => e.preventDefault()}>
-                    <span className="text-[hsl(var(--sub))]">—</span>
-                    <select className="font-mono text-[10px] bg-secondary border border-border rounded px-1 py-px text-[hsl(var(--text2))] cursor-pointer"
-                      value={denoiseQuality} onChange={e => { e.stopPropagation(); setDenoiseQuality(e.target.value) }}>
-                      <option value="fast">Fast</option>
-                      <option value="best">Best quality</option>
-                    </select>
-                  </span>
-                )}
-              />
+                const hiddenCount = hasAnalysis && !showAllProcessing
+                  ? [showDenoise, showAutoLevel, showDeclip, showEnhance, showDereverb, showHpf, showNormalize, showTrim, showFade].filter(v => !v).length
+                  : 0
 
-              <ProcessingToggle smart name="Balance Speaker Volume"
-                desc="Evens out volume so quiet speakers are easier to hear"
-                checked={autoLevel} onChange={v => { setAutoLevel(v); }}
-                detected={analysis?.needsLeveling ? `${analysis.recommendations?.find(r => r.includes('spread'))?.match(/[\d.]+/)?.[0] || ''}dB imbalance found` : null}
-              />
+                return <>
+                  {(showDenoise || showAutoLevel || showDeclip || showEnhance || showDereverb) && (
+                    <div className="px-4 py-1.5 bg-secondary/50">
+                      <span className="font-mono text-[9px] font-medium tracking-[1.2px] uppercase text-[hsl(var(--sub))]">
+                        {hasAnalysis && !showAllProcessing ? 'RECOMMENDED' : 'SMART'}
+                      </span>
+                    </div>
+                  )}
 
-              <ProcessingToggle smart name="Fix Clipped Audio"
-                desc="Repairs distorted peaks from recordings that were too loud"
-                checked={declip} onChange={setDeclip}
-                detected={analysis?.hasClipping ? 'Clipping found' : null}
-              />
+                  {showDenoise && <ProcessingToggle smart name="Remove Background Noise"
+                    desc="Cleans up HVAC hum, paper rustling, and room noise"
+                    checked={denoise} onChange={setDenoise}
+                    detected={analysis?.needsDenoise ? 'Noise detected' : null}
+                    extra={denoise && (
+                      <span className="inline-flex items-center gap-1 mt-0.5" onClick={e => e.preventDefault()}>
+                        <span className="text-[hsl(var(--sub))]">—</span>
+                        <select className="font-mono text-[10px] bg-secondary border border-border rounded px-1 py-px text-[hsl(var(--text2))] cursor-pointer"
+                          value={denoiseQuality} onChange={e => { e.stopPropagation(); setDenoiseQuality(e.target.value) }}>
+                          <option value="fast">Fast</option>
+                          <option value="best">Best quality</option>
+                        </select>
+                      </span>
+                    )}
+                  />}
 
-              <ProcessingToggle smart name="Enhance Clarity"
-                desc="Improves phone recordings and narrow-band audio"
-                checked={enhance} onChange={setEnhance}
-                detected={analysis?.isNarrowband ? `${analysis.sampleRate?.toLocaleString() || ''}Hz detected` : null}
-              />
+                  {showAutoLevel && <ProcessingToggle smart name="Balance Speaker Volume"
+                    desc="Evens out volume so quiet speakers are easier to hear"
+                    checked={autoLevel} onChange={v => { setAutoLevel(v); }}
+                    detected={analysis?.needsLeveling ? `${analysis.recommendations?.find(r => r.includes('spread'))?.match(/[\d.]+/)?.[0] || ''}dB imbalance found` : null}
+                  />}
 
-              <ProcessingToggle smart name="Reduce Room Echo"
-                desc="Removes reverb from large rooms or hallways"
-                checked={dereverb} onChange={setDereverb}
-              />
+                  {showDeclip && <ProcessingToggle smart name="Fix Clipped Audio"
+                    desc="Repairs distorted peaks from recordings that were too loud"
+                    checked={declip} onChange={setDeclip}
+                    detected={analysis?.hasClipping ? 'Clipping found' : null}
+                  />}
 
-              {/* ── Fine-tune ── */}
-              <div className="px-4 py-1.5 bg-secondary/50">
-                <span className="font-mono text-[9px] font-medium tracking-[1.2px] uppercase text-[hsl(var(--sub))]">FINE-TUNE</span>
-              </div>
+                  {showEnhance && <ProcessingToggle smart name="Enhance Clarity"
+                    desc="Improves phone recordings and narrow-band audio"
+                    checked={enhance} onChange={setEnhance}
+                    detected={analysis?.isNarrowband ? `${analysis.sampleRate?.toLocaleString() || ''}Hz detected` : null}
+                  />}
 
-              <ProcessingToggle name="High-Pass Filter"
-                desc="80 Hz cutoff — removes low rumble and handling noise"
-                checked={hpf} onChange={setHpf}
-              />
+                  {showDereverb && <ProcessingToggle smart name="Reduce Room Echo"
+                    desc="Removes reverb from large rooms or hallways"
+                    checked={dereverb} onChange={setDereverb}
+                  />}
 
-              <ProcessingToggle name="Normalize Volume"
-                desc="Targets –16 LUFS / –1.5 TP for consistent output level"
-                checked={normalize} onChange={setNormalize}
-              />
+                  {/* ── Fine-tune ── */}
+                  {(showHpf || showNormalize || showTrim || showFade) && (
+                    <div className="px-4 py-1.5 bg-secondary/50">
+                      <span className="font-mono text-[9px] font-medium tracking-[1.2px] uppercase text-[hsl(var(--sub))]">FINE-TUNE</span>
+                    </div>
+                  )}
 
-              <ProcessingToggle name="Trim Silence"
-                desc="Remove dead air at start and end (below –50 dB)"
-                checked={trim} onChange={setTrim}
-              />
+                  {showHpf && <ProcessingToggle name="High-Pass Filter"
+                    desc="80 Hz cutoff — removes low rumble and handling noise"
+                    checked={hpf} onChange={setHpf}
+                  />}
 
-              <ProcessingToggle name="Fade In / Out"
-                desc="Smooth start and end"
-                checked={fade} onChange={setFade}
-                extra={fade && (
-                  <span className="inline-flex items-center gap-1 mt-0.5" onClick={e => e.preventDefault()}>
-                    <span className="text-[hsl(var(--sub))]">—</span>
-                    <input type="number" className="w-[42px] bg-secondary border border-border rounded px-1 py-px font-mono text-[11px] text-foreground text-center focus:border-primary outline-none"
-                      min="0.1" max="5" step="0.1" value={fadeDur}
-                      onChange={e => setFadeDur(Math.max(0.1, parseFloat(e.target.value)||0.5))} />
-                    <span className="text-[11px] text-[hsl(var(--sub))]">s</span>
-                  </span>
-                )}
-              />
+                  {showNormalize && <ProcessingToggle name="Normalize Volume"
+                    desc="Targets –16 LUFS / –1.5 TP for consistent output level"
+                    checked={normalize} onChange={setNormalize}
+                  />}
+
+                  {showTrim && <ProcessingToggle name="Trim Silence"
+                    desc="Remove dead air at start and end (below –50 dB)"
+                    checked={trim} onChange={setTrim}
+                  />}
+
+                  {showFade && <ProcessingToggle name="Fade In / Out"
+                    desc="Smooth start and end"
+                    checked={fade} onChange={setFade}
+                    extra={fade && (
+                      <span className="inline-flex items-center gap-1 mt-0.5" onClick={e => e.preventDefault()}>
+                        <span className="text-[hsl(var(--sub))]">—</span>
+                        <input type="number" className="w-[42px] bg-secondary border border-border rounded px-1 py-px font-mono text-[11px] text-foreground text-center focus:border-primary outline-none"
+                          min="0.1" max="5" step="0.1" value={fadeDur}
+                          onChange={e => setFadeDur(Math.max(0.1, parseFloat(e.target.value)||0.5))} />
+                        <span className="text-[11px] text-[hsl(var(--sub))]">s</span>
+                      </span>
+                    )}
+                  />}
+
+                  {/* Show more / less toggle */}
+                  {hasAnalysis && hiddenCount > 0 && !showAllProcessing && (
+                    <button className="px-4 py-2 text-[11px] text-primary hover:text-foreground transition-colors cursor-pointer text-left"
+                      onClick={() => setShowAllProcessing(true)}>
+                      Show {hiddenCount} more option{hiddenCount !== 1 ? 's' : ''}...
+                    </button>
+                  )}
+                  {hasAnalysis && showAllProcessing && (
+                    <button className="px-4 py-2 text-[11px] text-[hsl(var(--sub))] hover:text-foreground transition-colors cursor-pointer text-left"
+                      onClick={() => setShowAllProcessing(false)}>
+                      Show less
+                    </button>
+                  )}
+                </>
+              })()}
 
               {/* Processing chain preview */}
               <div className="flex items-center gap-2 px-4 py-2.5 border-t border-border/60 bg-secondary/30">

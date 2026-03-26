@@ -400,6 +400,7 @@ async fn decode_to_mono(app: &AppHandle, path: &str, rate: u32) -> Result<PathBu
         .map_err(|e| e.to_string())?;
 
     if output.status.code() != Some(0) {
+        let _ = std::fs::remove_file(&tmp);
         return Err("Failed to decode audio for merge".into());
     }
 

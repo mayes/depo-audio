@@ -58,7 +58,7 @@ pub(crate) async fn detect_speech(
         "-i".into(), audio_path.to_string_lossy().to_string(),
         "-af".into(), "aresample=16000".into(),
         "-ac".into(), "1".into(),
-        "-acodec".into(), "pcm_f32le".into(),
+        "-acodec".into(), "pcm_s16le".into(),
         "-y".into(), tmp.to_string_lossy().to_string(),
     ];
 
@@ -77,9 +77,11 @@ pub(crate) async fn detect_speech(
 
     let reader = hound::WavReader::open(&tmp)
         .map_err(|e| format!("WAV read error: {}", e))?;
+    // Read as i16 and normalize to [-1.0, 1.0] float range for Silero VAD
     let samples: Vec<f32> = reader
-        .into_samples::<f32>()
+        .into_samples::<i16>()
         .filter_map(|s| s.ok())
+        .map(|s| s as f32 / 32768.0)
         .collect();
 
     let _ = std::fs::remove_file(&tmp);
@@ -93,15 +95,16 @@ pub(crate) async fn detect_speech(
         });
     }
 
-    // Silero VAD processes 512-sample chunks at 16kHz (~32ms each)
+    // Silero VAD v5 processes 512-sample chunks at 16kHz (~32ms each)
+    // Inputs: "input" [1, chunk_size], "state" [2, 1, 128], "sr" scalar i64
+    // Outputs: "output" [1, 1], "stateN" [2, 1, 128]
     let chunk_size = 512usize;
     let sample_rate = 16000usize;
     let num_chunks = samples.len() / chunk_size;
     let threshold = 0.5f32;
 
-    // Track VAD state for stateful inference
-    let mut h = ndarray::Array2::<f32>::zeros((2, 64)); // hidden state
-    let mut c = ndarray::Array2::<f32>::zeros((2, 64)); // cell state
+    // Silero VAD v5 uses a single state tensor [2, 1, 128]
+    let mut state = ndarray::Array3::<f32>::zeros((2, 1, 128));
     let sr = ndarray::Array1::from_vec(vec![sample_rate as i64]);
 
     let mut probabilities: Vec<f32> = Vec::with_capacity(num_chunks);
@@ -112,20 +115,16 @@ pub(crate) async fn detect_speech(
         let input = ndarray::Array2::from_shape_vec((1, chunk_size), chunk)
             .map_err(|e| format!("Tensor error: {}", e))?;
 
-        // Run inference with state
         let input_val = ort::value::Tensor::from_array(input)
             .map_err(|e| format!("Tensor error: {}", e))?;
         let sr_val = ort::value::Tensor::from_array(sr.clone())
             .map_err(|e| format!("Tensor error: {}", e))?;
-        let h_val = ort::value::Tensor::from_array(h.clone())
-            .map_err(|e| format!("Tensor error: {}", e))?;
-        let c_val = ort::value::Tensor::from_array(c.clone())
+        let state_val = ort::value::Tensor::from_array(state.clone())
             .map_err(|e| format!("Tensor error: {}", e))?;
         let result = session.run(ort::inputs![
             "input" => input_val,
-            "sr" => sr_val,
-            "h" => h_val,
-            "c" => c_val
+            "state" => state_val,
+            "sr" => sr_val
         ]);
 
         match result {
@@ -138,25 +137,18 @@ pub(crate) async fn detect_speech(
                     }
                 }
 
-                // Update hidden states for next chunk
-                if let Some(hn) = outputs.get("hn") {
-                    if let Ok(hn_tensor) = hn.try_extract_tensor::<f32>() {
-                        let slice: &[f32] = hn_tensor.1;
-                        if slice.len() == h.len() {
-                            h.as_slice_mut().unwrap().copy_from_slice(slice);
-                        }
-                    }
-                }
-                if let Some(cn) = outputs.get("cn") {
-                    if let Ok(cn_tensor) = cn.try_extract_tensor::<f32>() {
-                        let slice: &[f32] = cn_tensor.1;
-                        if slice.len() == c.len() {
-                            c.as_slice_mut().unwrap().copy_from_slice(slice);
+                // Update state for next chunk
+                if let Some(state_out) = outputs.get("stateN") {
+                    if let Ok(state_tensor) = state_out.try_extract_tensor::<f32>() {
+                        let slice: &[f32] = state_tensor.1;
+                        if slice.len() == state.len() {
+                            state.as_slice_mut().unwrap().copy_from_slice(slice);
                         }
                     }
                 }
             }
-            Err(_) => {
+            Err(e) => {
+                eprintln!("[vad] inference error at chunk {}: {}", i, e);
                 probabilities.push(0.0);
             }
         }

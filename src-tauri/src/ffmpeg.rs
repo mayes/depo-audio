@@ -70,7 +70,7 @@ pub(crate) async fn build_proc_filters_with_gain(
     let mut filters = Vec::new();
 
     // De-clipping runs first — reconstruct clipped peaks before other processing
-    if opts.declip    { filters.push("adeclip=w=55:o=10".into()); }
+    if opts.declip    { filters.push("adeclip=w=55:o=50".into()); }
 
     // High-pass filter removes low-frequency noise (HVAC, handling, rumble)
     if opts.hpf       { filters.push("highpass=f=80".into()); }

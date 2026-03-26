@@ -179,10 +179,13 @@ pub(crate) async fn denoise_deep_filter(
         output_samples.extend_from_slice(&samples[start..start + frame_size]);
     }
 
-    // Handle remaining samples
+    // Handle remaining samples — zero-pad to a full frame to avoid unprocessed tail
     let remaining = samples.len() - (num_frames * frame_size);
     if remaining > 0 {
-        output_samples.extend_from_slice(&samples[num_frames * frame_size..]);
+        let mut final_frame = vec![0.0f32; frame_size];
+        final_frame[..remaining].copy_from_slice(&samples[num_frames * frame_size..]);
+        // Only keep the actual remaining samples from the output
+        output_samples.extend_from_slice(&final_frame[..remaining]);
     }
 
     // Write output

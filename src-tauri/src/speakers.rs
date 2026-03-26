@@ -47,7 +47,7 @@ pub(crate) async fn detect_speakers(
         "-i".into(), audio_path.to_string_lossy().to_string(),
         "-af".into(), "aresample=16000".into(),
         "-ac".into(), "1".into(),
-        "-acodec".into(), "pcm_f32le".into(),
+        "-acodec".into(), "pcm_s16le".into(),
         "-t".into(), "60".into(), // Analyze first 60 seconds only (speed)
         "-y".into(), tmp.to_string_lossy().to_string(),
     ];
@@ -69,8 +69,9 @@ pub(crate) async fn detect_speakers(
         .map_err(|e| format!("Failed to open WAV: {}", e))?;
 
     let samples: Vec<f32> = reader
-        .into_samples::<f32>()
+        .into_samples::<i16>()
         .filter_map(|s| s.ok())
+        .map(|s| s as f32 / 32768.0)
         .collect();
 
     let _ = std::fs::remove_file(&tmp);

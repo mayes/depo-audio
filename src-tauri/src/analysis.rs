@@ -87,8 +87,16 @@ pub(crate) async fn analyze_audio(
         })
         .collect();
 
-    // Smart Turn detection (placeholder — requires ONNX model)
-    let turns = detect_turns(app, feed, channels, duration).await;
+    // Voice activity detection (run early so we can skip expensive steps on silence)
+    let vad_result = crate::vad::detect_speech(app, std::path::Path::new(path)).await.ok();
+    let speech_ratio = vad_result.as_ref().map(|v| v.speech_ratio).unwrap_or(1.0);
+
+    // Smart Turn detection — skip if very little speech detected
+    let turns = if speech_ratio > 0.1 {
+        detect_turns(app, feed, channels, duration).await
+    } else {
+        Vec::new()
+    };
 
     // Build recommendations
     let mut recommendations = Vec::new();
@@ -123,8 +131,7 @@ pub(crate) async fn analyze_audio(
         ));
     }
 
-    // Voice activity detection (if VAD model available)
-    let vad_result = crate::vad::detect_speech(app, std::path::Path::new(path)).await.ok();
+    // VAD was already run above; add recommendation if mostly silence
     if let Some(ref vad) = vad_result {
         if vad.speech_ratio < 0.3 && duration > 10.0 {
             recommendations.push(format!(
@@ -134,16 +141,22 @@ pub(crate) async fn analyze_audio(
         }
     }
 
-    // Quality scoring (if DNSMOS model available)
-    let quality_score = match crate::scoring::score_quality(app, std::path::Path::new(path)).await {
-        Ok(qs) => Some(crate::types::QualityScoreResult { sig: qs.sig, bak: qs.bak, ovr: qs.ovr }),
-        Err(_) => None,
+    // Quality scoring — skip if no speech detected
+    let quality_score = if speech_ratio > 0.05 {
+        crate::scoring::score_quality(app, std::path::Path::new(path)).await
+            .map(|qs| crate::types::QualityScoreResult { sig: qs.sig, bak: qs.bak, ovr: qs.ovr })
+            .ok()
+    } else {
+        None
     };
 
-    // Speaker count detection (if segmentation model available)
-    let speaker_count = match crate::speakers::detect_speakers(app, std::path::Path::new(path)).await {
-        Ok(info) => Some(info.count),
-        Err(_) => None,
+    // Speaker count detection — skip if no speech detected
+    let speaker_count = if speech_ratio > 0.1 {
+        crate::speakers::detect_speakers(app, std::path::Path::new(path)).await
+            .map(|info| info.count)
+            .ok()
+    } else {
+        None
     };
 
     // Note when AI models are missing so the user knows results may be incomplete
@@ -351,7 +364,7 @@ async fn detect_turns(
         let args: Vec<String> = vec![
             "-i".into(), feed.to_string_lossy().to_string(),
             "-af".into(), pan_filter,
-            "-acodec".into(), "pcm_f32le".into(),
+            "-acodec".into(), "pcm_s16le".into(),
             "-y".into(), tmp.to_string_lossy().to_string(),
         ];
 
@@ -366,8 +379,9 @@ async fn detect_turns(
         // Read the decoded WAV and run turn detection
         if let Ok(reader) = hound::WavReader::open(&tmp) {
             let samples: Vec<f32> = reader
-                .into_samples::<f32>()
+                .into_samples::<i16>()
                 .filter_map(|s| s.ok())
+                .map(|s| s as f32 / 32768.0)
                 .collect();
 
             let sample_rate = 16000usize;

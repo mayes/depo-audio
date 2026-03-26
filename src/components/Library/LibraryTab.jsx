@@ -51,22 +51,30 @@ export default function LibraryTab({ cases, setCases, search, setSearch, labels,
 
   const deleteCase = async (id) => {
     if (!confirm('Delete this case and all its session records? (Files on disk are not deleted.)')) return
-    await invoke('library_delete_case', { caseId: id })
-    setCases(p => p.filter(c => c.id !== id))
+    try {
+      await invoke('library_delete_case', { caseId: id })
+      setCases(p => p.filter(c => c.id !== id))
+    } catch (e) { console.error('Delete case failed:', e) }
   }
   const archiveCase = async (id, archived) => {
-    await invoke('library_archive_case', { caseId: id, archived })
-    setCases(p => p.map(c => c.id === id ? {...c, archived} : c))
+    try {
+      await invoke('library_archive_case', { caseId: id, archived })
+      setCases(p => p.map(c => c.id === id ? {...c, archived} : c))
+    } catch (e) { console.error('Archive case failed:', e) }
   }
   const renameCase = async (id) => {
     if (!editName.trim()) return
-    await invoke('library_rename_case', { caseId: id, name: editName.trim() })
-    setCases(p => p.map(c => c.id === id ? {...c, name: editName.trim()} : c))
-    setEditingCase(null)
+    try {
+      await invoke('library_rename_case', { caseId: id, name: editName.trim() })
+      setCases(p => p.map(c => c.id === id ? {...c, name: editName.trim()} : c))
+      setEditingCase(null)
+    } catch (e) { console.error('Rename case failed:', e) }
   }
   const deleteSession = async (caseId, sessionId) => {
-    await invoke('library_delete_session', { caseId, sessionId })
-    setCases(p => p.map(c => c.id === caseId ? {...c, sessions: c.sessions.filter(s => s.id !== sessionId)} : c))
+    try {
+      await invoke('library_delete_session', { caseId, sessionId })
+      setCases(p => p.map(c => c.id === caseId ? {...c, sessions: c.sessions.filter(s => s.id !== sessionId)} : c))
+    } catch (e) { console.error('Delete session failed:', e) }
   }
 
   const handleImportDone = () => {
