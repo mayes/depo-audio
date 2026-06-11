@@ -102,11 +102,11 @@ export default function App() {
           </TabsTrigger>
         </TabsList>
         <div className="flex justify-end gap-1">
-          <Button variant="ghost" size="icon" title="Settings" onClick={() => setSettingsOpen(true)}>
-            <Settings size={16} />
+          <Button variant="ghost" size="icon" title="Settings" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
+            <Settings size={16} aria-hidden="true" />
           </Button>
-          <Button variant="ghost" size="icon" title={`Theme: ${themePref}`} onClick={cycleTheme}>
-            <ThemeIcon size={16} />
+          <Button variant="ghost" size="icon" title={`Theme: ${themePref}`} aria-label={`Switch theme (current: ${themePref})`} onClick={cycleTheme}>
+            <ThemeIcon size={16} aria-hidden="true" />
           </Button>
         </div>
       </header>

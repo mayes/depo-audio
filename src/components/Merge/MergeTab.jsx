@@ -203,8 +203,9 @@ export default function MergeTab() {
                         <button
                           key={f.id}
                           title={f.desc}
+                          aria-pressed={format === f.id}
                           className={cn(
-                            'px-3 py-1.5 rounded-md text-xs font-semibold transition-colors',
+                            'px-3 py-1.5 rounded-md text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                             format === f.id
                               ? 'bg-[hsl(var(--gold-dim))] text-primary'
                               : 'text-[hsl(var(--sub))] hover:text-[hsl(var(--text2))]'
