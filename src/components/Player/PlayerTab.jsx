@@ -8,6 +8,7 @@ import { fmtTime } from '../../utils'
 import { Button } from '../ui/button'
 import { Card, CardHeader, CardTitle } from '../ui/card'
 import Waveform from '../common/Waveform'
+import { WaveformIcon } from '../common/Icons'
 
 // ── Global Audio Player ─────────────────────────────────────────────────────
 //
@@ -128,7 +129,8 @@ export default function PlayerTab({ dropHandlerRef }) {
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <div className="max-w-[920px] mx-auto px-7 py-5 flex flex-col gap-3.5">
 
-          {/* ── Now Playing ─────────────────────────────────── */}
+          {/* ── Now Playing (hidden until something is queued) ─────────── */}
+          {tracks.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>NOW PLAYING</CardTitle>
@@ -220,7 +222,7 @@ export default function PlayerTab({ dropHandlerRef }) {
               </div>
             ) : (
               <p className="text-[13px] text-[hsl(var(--sub))] text-center py-5">
-                No file loaded — drop audio files or click Browse below.
+                Select a track below to start listening.
               </p>
             )}
 
@@ -254,6 +256,7 @@ export default function PlayerTab({ dropHandlerRef }) {
               </div>
             )}
           </Card>
+          )}
 
           {/* ── Playlist ────────────────────────────────────── */}
           <Card>
@@ -264,17 +267,23 @@ export default function PlayerTab({ dropHandlerRef }) {
 
             {tracks.length === 0 ? (
               <div
+                role="button"
+                tabIndex={0}
+                aria-label="Add audio files to the playlist: drop them here or press Enter to browse"
                 className={cn(
-                  'border-2 border-dashed border-border rounded-lg m-3 p-8 text-center cursor-pointer transition-colors hover:border-primary',
+                  'flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg m-3 py-10 px-8 text-center cursor-pointer transition-colors hover:border-primary',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   dragOver && 'border-primary bg-primary/5'
                 )}
                 onDragOver={e => { e.preventDefault(); setDragOver(true) }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={handleDrop}
                 onClick={browseFiles}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); browseFiles() } }}
               >
-                <p className="text-sm text-foreground mb-1">Drop audio files here to listen</p>
-                <p className="text-[11px] text-[hsl(var(--sub))]">WAV · MP3 · FLAC · Opus · M4A · OGG and more</p>
+                <WaveformIcon />
+                <p className="text-[13px] font-semibold text-foreground">Drop audio files here to listen</p>
+                <p className="text-[11px] text-[hsl(var(--sub))]">No conversion needed — WAV · MP3 · FLAC · Opus · M4A · OGG and more</p>
               </div>
             ) : (
               <div className="p-2">

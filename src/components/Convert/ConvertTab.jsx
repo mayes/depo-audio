@@ -173,6 +173,9 @@ export default function ConvertTab({
           </Card>
 
           {/* ── CHANNELS (labels + mix) ────────────────────────────────── */}
+          {/* Only meaningful once files are queued, and not in keep mode —
+              keep mode preserves channels untouched and ignores labels */}
+          {files.length > 0 && mode !== 'keep' && (
           <Card>
             <CardHeader>
               <CardTitle>CHANNELS</CardTitle>
@@ -180,7 +183,6 @@ export default function ConvertTab({
                 {mode === 'stereo' && autoLevel && 'Name channels — volume managed by auto-level'}
                 {mode === 'stereo' && !autoLevel && 'Name channels and adjust mix volumes'}
                 {mode === 'split' && 'Channel names used as output filenames'}
-                {mode === 'keep' && 'Channel names saved to library for reference'}
               </span>
             </CardHeader>
             <CardContent>
@@ -194,6 +196,7 @@ export default function ConvertTab({
                     {mode === 'stereo' && (
                       <>
                         <input type="range" min="0" max="2" step="0.05" value={autoLevel ? 1.0 : chanVols[i]}
+                          aria-label={`Mix volume for channel ${i+1}`}
                           className={`flex-1 h-1 accent-primary cursor-pointer ${autoLevel ? 'opacity-40' : ''}`}
                           disabled={autoLevel}
                           onChange={e => setChanVols(p => p.map((x,j) => j===i ? parseFloat(e.target.value):x))} />
@@ -207,6 +210,7 @@ export default function ConvertTab({
               </div>
             </CardContent>
           </Card>
+          )}
 
           {/* ── AUDIO PROCESSING (unified panel) ─────────────────────────── */}
           <Card>

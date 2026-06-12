@@ -109,13 +109,32 @@ export default function MergeTab() {
 
             {sources.length === 0 ? (
               <div
-                className="border-2 border-dashed border-border rounded-lg m-3 p-8 text-center cursor-pointer transition-colors hover:border-primary"
+                role="button"
+                tabIndex={0}
+                aria-label="Add recordings to merge: press Enter to browse"
+                className="border-2 border-dashed border-border rounded-lg m-3 py-10 px-8 text-center cursor-pointer transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={browseFiles}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); browseFiles() } }}
               >
-                <p className="text-sm text-foreground mb-1">Add two or more recordings of the same event</p>
-                <p className="text-[11px] text-[hsl(var(--sub))]">
-                  DepoAudio will sync them automatically and combine the clearest parts into one clean file.
+                <p className="text-[13px] font-semibold text-foreground mb-1">Add two or more recordings of the same event</p>
+                <p className="text-[11px] text-[hsl(var(--sub))] mb-5">
+                  Reporter mic, backup recorder, phone — any combination works.
                 </p>
+                <div className="flex items-start justify-center gap-6 text-left">
+                  {[
+                    ['1', 'Add recordings', 'Two or more captures of the same proceeding'],
+                    ['2', 'Auto-sync', 'DepoAudio aligns them by sound, no timestamps needed'],
+                    ['3', 'One clean file', 'The clearest source wins at every moment'],
+                  ].map(([n, title, desc]) => (
+                    <div key={n} className="flex items-start gap-2 max-w-[180px]">
+                      <span className="w-5 h-5 rounded-full bg-[hsl(var(--gold-dim))] text-primary text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{n}</span>
+                      <div className="flex flex-col">
+                        <span className="text-[11px] font-semibold text-foreground">{title}</span>
+                        <span className="text-[10px] text-[hsl(var(--sub))] leading-snug">{desc}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="p-2">
