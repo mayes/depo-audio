@@ -1,7 +1,17 @@
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
 use ort::session::Session;
 use tauri::{AppHandle, Manager};
+
+/// Result of the startup dlopen pre-flight (see lib.rs::setup_onnx_runtime).
+/// ort 2.0.0-rc.12 hangs instead of erroring when its dylib fails to load,
+/// so sessions must never be built unless the preflight succeeded.
+static ORT_PREFLIGHT: OnceLock<Result<(), String>> = OnceLock::new();
+
+pub(crate) fn set_ort_preflight(result: Result<(), String>) {
+    let _ = ORT_PREFLIGHT.set(result);
+}
 
 // ── ONNX model loader ───────────────────────────────────────────────────────
 //
@@ -37,6 +47,14 @@ pub(crate) fn model_path(app: &AppHandle, filename: &str) -> Result<PathBuf, Str
 /// Load an ONNX session with hardware acceleration and optional integrity check.
 /// Returns Err if ONNX Runtime is not installed — the app continues without AI features.
 pub(crate) fn load_session(path: &PathBuf) -> Result<Session, String> {
+    match ORT_PREFLIGHT.get() {
+        Some(Ok(())) => {}
+        Some(Err(e)) => return Err(format!("AI features unavailable: {}", e)),
+        // Preflight never ran (tests, tooling): allow an explicit env override
+        None if std::env::var("ORT_DYLIB_PATH").is_ok() => {}
+        None => return Err("AI features unavailable: ONNX Runtime was not initialized".into()),
+    }
+
     let name = crate::safety::safe_display(path);
 
     // Verify model integrity if a hash is known
@@ -458,4 +476,59 @@ fn estimate_ram_mb() -> u64 {
                 .map(|kb| kb / 1024)
         })
         .unwrap_or(4096)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// End-to-end check that the `ort` crate can load a real ONNX Runtime
+    /// dylib and run the bundled Silero VAD model with the exact tensors
+    /// vad.rs builds. Ignored by default: requires ORT_DYLIB_PATH pointing
+    /// at a real libonnxruntime. Run with `cargo test -- --ignored`.
+    ///
+    /// Known caveat: in some sandboxed Linux containers ort's environment
+    /// initialization deadlocks (upstream rc.12 bug: any init failure
+    /// re-enters its API OnceLock) even when the same runtime works via
+    /// Python's bindings. Run this on a desktop OS.
+    #[test]
+    #[ignore]
+    fn ort_loads_and_runs_silero_vad() {
+        let dylib = std::env::var("ORT_DYLIB_PATH")
+            .expect("set ORT_DYLIB_PATH to a real libonnxruntime to run this test");
+        // Pre-flight the dylib ourselves: ort 2.0.0-rc.12 deadlocks instead
+        // of erroring when its dylib fails to load (see setup_onnx_runtime)
+        match unsafe { libloading::Library::new(&dylib) } {
+            Ok(lib) => {
+                std::mem::forget(lib);
+                set_ort_preflight(Ok(()));
+            }
+            Err(e) => {
+                eprintln!("skipping: dylib does not load in this environment: {e}");
+                return;
+            }
+        }
+        let model = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("resources/models/silero_vad.onnx");
+        let mut session = load_session(&model).expect("session should load");
+
+        let chunk = ndarray::Array2::<f32>::zeros((1, 512));
+        let state = ndarray::Array3::<f32>::zeros((2, 1, 128));
+        let sr = ndarray::Array1::from_vec(vec![16000i64]);
+
+        let outputs = session
+            .run(ort::inputs![
+                "input" => ort::value::Tensor::from_array(chunk).unwrap(),
+                "state" => ort::value::Tensor::from_array(state).unwrap(),
+                "sr" => ort::value::Tensor::from_array(sr).unwrap()
+            ])
+            .expect("inference should run");
+
+        let prob = outputs
+            .get("output")
+            .and_then(|v| v.try_extract_tensor::<f32>().ok())
+            .and_then(|t| t.1.first().copied())
+            .expect("output tensor");
+        assert!(prob.is_finite() && (0.0..=1.0).contains(&prob), "prob = {}", prob);
+    }
 }

@@ -11,7 +11,7 @@ on:
         type: string
 
 env:
-  ORT_VERSION: "1.21.1"
+  ORT_VERSION: "1.22.0"
 
 jobs:
   release:
@@ -25,19 +25,19 @@ jobs:
           - platform: macos-latest
             args: '--target aarch64-apple-darwin'
             rust-target: aarch64-apple-darwin
-            ort-url: 'https://github.com/microsoft/onnxruntime/releases/download/v1.21.1/onnxruntime-osx-arm64-1.21.1.tgz'
-            ort-lib: 'libonnxruntime.1.21.1.dylib'
+            ort-url: 'https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-osx-arm64-1.22.0.tgz'
+            ort-lib: 'libonnxruntime.1.22.0.dylib'
             ort-dest: 'libonnxruntime.dylib'
           - platform: macos-latest
             args: '--target x86_64-apple-darwin'
             rust-target: x86_64-apple-darwin
-            ort-url: 'https://github.com/microsoft/onnxruntime/releases/download/v1.21.1/onnxruntime-osx-x86_64-1.21.1.tgz'
-            ort-lib: 'libonnxruntime.1.21.1.dylib'
+            ort-url: 'https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-osx-x86_64-1.22.0.tgz'
+            ort-lib: 'libonnxruntime.1.22.0.dylib'
             ort-dest: 'libonnxruntime.dylib'
           - platform: windows-latest
             args: ''
             rust-target: x86_64-pc-windows-msvc
-            ort-url: 'https://github.com/microsoft/onnxruntime/releases/download/v1.21.1/onnxruntime-win-x64-1.21.1.zip'
+            ort-url: 'https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-win-x64-1.22.0.zip'
             ort-lib: 'onnxruntime.dll'
             ort-dest: 'onnxruntime.dll'
 
@@ -108,7 +108,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           mkdir -p src-tauri/resources/onnxruntime
-          curl -sL "${{ matrix.ort-url }}" -o ort.tgz
+          curl -fsSL --retry 3 "${{ matrix.ort-url }}" -o ort.tgz
           tar xzf ort.tgz
           ORT_DIR=$(ls -d onnxruntime-*)
           cp "$ORT_DIR/lib/${{ matrix.ort-lib }}" "src-tauri/resources/onnxruntime/${{ matrix.ort-dest }}"

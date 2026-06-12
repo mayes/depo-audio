@@ -15,17 +15,17 @@ OS=$(uname -s)
 if [ "$OS" = "Darwin" ]; then
   if [ "$ARCH" = "arm64" ]; then
     TARGET="aarch64-apple-darwin"
-    ORT_URL="https://github.com/microsoft/onnxruntime/releases/download/v1.21.1/onnxruntime-osx-arm64-1.21.1.tgz"
+    ORT_URL="https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-osx-arm64-1.22.0.tgz"
   else
     TARGET="x86_64-apple-darwin"
-    ORT_URL="https://github.com/microsoft/onnxruntime/releases/download/v1.21.1/onnxruntime-osx-x86_64-1.21.1.tgz"
+    ORT_URL="https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-osx-x86_64-1.22.0.tgz"
   fi
-  ORT_LIB="libonnxruntime.1.21.1.dylib"
+  ORT_LIB="libonnxruntime.1.22.0.dylib"
   ORT_DEST="libonnxruntime.dylib"
 elif [ "$OS" = "Linux" ]; then
   TARGET="x86_64-unknown-linux-gnu"
-  ORT_URL="https://github.com/microsoft/onnxruntime/releases/download/v1.21.1/onnxruntime-linux-x64-1.21.1.tgz"
-  ORT_LIB="libonnxruntime.so.1.21.1"
+  ORT_URL="https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-linux-x64-1.22.0.tgz"
+  ORT_LIB="libonnxruntime.so.1.22.0"
   ORT_DEST="libonnxruntime.so"
 else
   echo "Unsupported OS: $OS (use Windows setup manually)"
@@ -64,7 +64,7 @@ if [ -f "$ORT_DIR/$ORT_DEST" ]; then
 else
   echo "Downloading ONNX Runtime..."
   TMPDIR=$(mktemp -d)
-  curl -sL "$ORT_URL" -o "$TMPDIR/ort.tgz"
+  curl -fsSL --retry 3 "$ORT_URL" -o "$TMPDIR/ort.tgz"
   tar xzf "$TMPDIR/ort.tgz" -C "$TMPDIR"
   ORT_EXTRACT=$(ls -d "$TMPDIR"/onnxruntime-*)
   cp "$ORT_EXTRACT/lib/$ORT_LIB" "$ORT_DIR/$ORT_DEST"
