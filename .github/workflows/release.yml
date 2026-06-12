@@ -4,6 +4,11 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to create (e.g. v0.8.0)'
+        required: true
+        type: string
 
 env:
   ORT_VERSION: "1.21.1"
@@ -131,8 +136,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName:      ${{ github.ref_name }}
-          releaseName:  'DepoAudio ${{ github.ref_name }}'
+          tagName:      ${{ inputs.tag || github.ref_name }}
+          releaseName:  'DepoAudio ${{ inputs.tag || github.ref_name }}'
           releaseBody:  'See CHANGELOG.md for details.'
           releaseDraft: true
           prerelease:   false
