@@ -22,11 +22,16 @@ use types::AppState;
 
 /// Set ORT_DYLIB_PATH to the bundled ONNX Runtime library so AI features work
 /// without requiring users to install onnxruntime separately.
+///
+/// The dylib is pre-flighted with dlopen before ort ever sees it: ort
+/// 2.0.0-rc.12 deadlocks (it re-enters its own API OnceLock while building
+/// the error) when the dylib fails to load, so a bad library must be caught
+/// here — load_session checks the preflight and degrades gracefully.
 fn setup_onnx_runtime(app: &tauri::AppHandle) {
-    if std::env::var("ORT_DYLIB_PATH").is_ok() {
-        return; // Already set (e.g. by developer)
-    }
-    if let Ok(resource_dir) = app.path().resource_dir() {
+    let preset = std::env::var("ORT_DYLIB_PATH").ok().filter(|s| !s.is_empty());
+    let lib_path = if let Some(p) = preset {
+        std::path::PathBuf::from(p) // already set (e.g. by developer)
+    } else if let Ok(resource_dir) = app.path().resource_dir() {
         let ort_dir = resource_dir.join("resources").join("onnxruntime");
         #[cfg(target_os = "macos")]
         let lib_name = "libonnxruntime.dylib";
@@ -36,8 +41,28 @@ fn setup_onnx_runtime(app: &tauri::AppHandle) {
         let lib_name = "libonnxruntime.so";
 
         let lib_path = ort_dir.join(lib_name);
-        if lib_path.exists() {
+        if !lib_path.exists() {
+            models::set_ort_preflight(Err("ONNX Runtime library not found in app resources".into()));
+            return;
+        }
+        lib_path
+    } else {
+        models::set_ort_preflight(Err("Cannot resolve app resource directory".into()));
+        return;
+    };
+
+    // dlopen exactly what ort will dlopen. Keeping the handle alive means
+    // ort's own load of the same path reuses it (no second TLS allocation).
+    match unsafe { libloading::Library::new(&lib_path) } {
+        Ok(lib) => {
+            std::mem::forget(lib); // keep loaded for the process lifetime
             std::env::set_var("ORT_DYLIB_PATH", &lib_path);
+            models::set_ort_preflight(Ok(()));
+        }
+        Err(e) => {
+            eprintln!("[ort] ONNX Runtime failed to load, AI features disabled: {}", e);
+            std::env::remove_var("ORT_DYLIB_PATH");
+            models::set_ort_preflight(Err(format!("ONNX Runtime failed to load: {}", e)));
         }
     }
 }
