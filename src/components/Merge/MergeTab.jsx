@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
-import { Loader2, X, Plus } from 'lucide-react'
+import { Loader2, X } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { FORMATS_OUT, CH_COLORS } from '../../constants'
 import { fmtSize, fmtTime } from '../../utils'
@@ -13,10 +13,11 @@ import { Badge } from '../ui/badge'
 
 export default function MergeTab() {
   const [sources, setSources] = useState([])
-  const [outDir, setOutDir] = useState('')
+  // Merge output goes next to the first source; sample rate is fixed at 48kHz
+  const outDir = ''
+  const rate = '48000'
   const [outName, setOutName] = useState('')
   const [format, setFormat] = useState('wav')
-  const [rate, setRate] = useState('48000')
   const [strategy, setStrategy] = useState('best_quality')
   const [syncing, setSyncing] = useState(false)
   const [merging, setMerging] = useState(false)
@@ -40,7 +41,9 @@ export default function MergeTab() {
         setResult(null)
         setError('')
       }
-    } catch {}
+    } catch {
+      // Dialog dismissed or unavailable — nothing to add
+    }
   }
 
   const removeSource = (idx) => {
@@ -106,13 +109,32 @@ export default function MergeTab() {
 
             {sources.length === 0 ? (
               <div
-                className="border-2 border-dashed border-border rounded-lg m-3 p-8 text-center cursor-pointer transition-colors hover:border-primary"
+                role="button"
+                tabIndex={0}
+                aria-label="Add recordings to merge: press Enter to browse"
+                className="border-2 border-dashed border-border rounded-lg m-3 py-10 px-8 text-center cursor-pointer transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={browseFiles}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); browseFiles() } }}
               >
-                <p className="text-sm text-foreground mb-1">Add two or more recordings of the same event</p>
-                <p className="text-[11px] text-[hsl(var(--sub))]">
-                  DepoAudio will sync them automatically and combine the clearest parts into one clean file.
+                <p className="text-[13px] font-semibold text-foreground mb-1">Add two or more recordings of the same event</p>
+                <p className="text-[11px] text-[hsl(var(--sub))] mb-5">
+                  Reporter mic, backup recorder, phone — any combination works.
                 </p>
+                <div className="flex items-start justify-center gap-6 text-left">
+                  {[
+                    ['1', 'Add recordings', 'Two or more captures of the same proceeding'],
+                    ['2', 'Auto-sync', 'DepoAudio aligns them by sound, no timestamps needed'],
+                    ['3', 'One clean file', 'The clearest source wins at every moment'],
+                  ].map(([n, title, desc]) => (
+                    <div key={n} className="flex items-start gap-2 max-w-[180px]">
+                      <span className="w-5 h-5 rounded-full bg-[hsl(var(--gold-dim))] text-primary text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{n}</span>
+                      <div className="flex flex-col">
+                        <span className="text-[11px] font-semibold text-foreground">{title}</span>
+                        <span className="text-[10px] text-[hsl(var(--sub))] leading-snug">{desc}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="p-2">
@@ -200,8 +222,9 @@ export default function MergeTab() {
                         <button
                           key={f.id}
                           title={f.desc}
+                          aria-pressed={format === f.id}
                           className={cn(
-                            'px-3 py-1.5 rounded-md text-xs font-semibold transition-colors',
+                            'px-3 py-1.5 rounded-md text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                             format === f.id
                               ? 'bg-[hsl(var(--gold-dim))] text-primary'
                               : 'text-[hsl(var(--sub))] hover:text-[hsl(var(--text2))]'

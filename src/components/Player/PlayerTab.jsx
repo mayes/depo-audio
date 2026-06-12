@@ -1,29 +1,37 @@
 import { useState, useRef, useEffect } from 'react'
-import { invoke, convertFileSrc } from '@tauri-apps/api/core'
+import { convertFileSrc } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { Play, Pause, SkipBack, SkipForward, Bookmark, X, Plus } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { CH_COLORS } from '../../constants'
-import { fmtTime, fmtSize } from '../../utils'
+import { fmtTime } from '../../utils'
 import { Button } from '../ui/button'
 import { Card, CardHeader, CardTitle } from '../ui/card'
 import Waveform from '../common/Waveform'
+import { WaveformIcon } from '../common/Icons'
 
 // ── Global Audio Player ─────────────────────────────────────────────────────
 //
 // Play any audio file directly — no conversion needed. Supports multi-channel
 // files with color-coded speaker tracks. Drop files or browse to start.
 
-export default function PlayerTab() {
+export default function PlayerTab({ dropHandlerRef }) {
   const [tracks, setTracks] = useState([])       // { path, name, size, channels, duration, color }
   const [activeTrack, setActiveTrack] = useState(null)
   const [playing, setPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [dragOver, setDragOver] = useState(false)
-  const [bookmarks, setBookmarks] = useState([])
+  // Bookmarks persist across sessions
+  const [bookmarks, setBookmarks] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('player-bookmarks') || '[]') } catch { return [] }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('player-bookmarks', JSON.stringify(bookmarks)) } catch { /* storage full or unavailable */ }
+  }, [bookmarks])
   const [dragIdx, setDragIdx] = useState(null) // playlist drag-reorder
   const audioRef = useRef(null)
+  const autoAdvanceRef = useRef(false) // play next track once it loads
 
   // Browse for files
   const browseFiles = async () => {
@@ -36,7 +44,9 @@ export default function PlayerTab() {
         const paths = Array.isArray(selected) ? selected : [selected]
         addFiles(paths)
       }
-    } catch {}
+    } catch {
+      // Dialog dismissed or unavailable — nothing to add
+    }
   }
 
   // Add files to playlist
@@ -65,6 +75,14 @@ export default function PlayerTab() {
     // Tauri drag-drop handled via event listener in App
   }
 
+  // Claim native drops for the playlist while this tab is mounted.
+  // No dependency array: re-register every render so addFiles sees fresh state.
+  useEffect(() => {
+    if (!dropHandlerRef) return undefined
+    dropHandlerRef.current = addFiles
+    return () => { dropHandlerRef.current = null }
+  })
+
   // Play / pause
   const toggle = () => {
     const a = audioRef.current
@@ -87,13 +105,6 @@ export default function PlayerTab() {
     setCurrentTime(0)
   }
 
-  // Seek
-  const seek = (e) => {
-    if (!audioRef.current || !duration) return
-    const r = e.currentTarget.getBoundingClientRect()
-    audioRef.current.currentTime = ((e.clientX - r.left) / r.width) * duration
-  }
-
   // Remove track
   const removeTrack = (path) => {
     setTracks(prev => prev.filter(t => t.path !== path))
@@ -103,13 +114,18 @@ export default function PlayerTab() {
     }
   }
 
-  // Auto-play on track change
+  // Reload on track change; keep playing if we got here by auto-advance
   useEffect(() => {
     if (activeTrack && audioRef.current) {
       audioRef.current.load()
       setCurrentTime(0)
       setDuration(0)
+      if (autoAdvanceRef.current) {
+        autoAdvanceRef.current = false
+        audioRef.current.play().then(() => setPlaying(true)).catch(() => {})
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTrack?.path])
 
   const audioSrc = activeTrack ? convertFileSrc(activeTrack.path) : ''
@@ -119,7 +135,8 @@ export default function PlayerTab() {
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <div className="max-w-[920px] mx-auto px-7 py-5 flex flex-col gap-3.5">
 
-          {/* ── Now Playing ─────────────────────────────────── */}
+          {/* ── Now Playing (hidden until something is queued) ─────────── */}
+          {tracks.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>NOW PLAYING</CardTitle>
@@ -138,7 +155,15 @@ export default function PlayerTab() {
                 <audio ref={audioRef} src={audioSrc} preload="metadata"
                   onLoadedMetadata={e => setDuration(e.target.duration)}
                   onTimeUpdate={e => setCurrentTime(e.target.currentTime)}
-                  onEnded={() => { setPlaying(false); skip(1) }}
+                  onEnded={() => {
+                    setPlaying(false)
+                    // Continue through the playlist; stop after the last track
+                    const idx = tracks.findIndex(t => t.path === activeTrack.path)
+                    if (idx >= 0 && idx < tracks.length - 1) {
+                      autoAdvanceRef.current = true
+                      skip(1)
+                    }
+                  }}
                 />
 
                 {/* Waveform visualization with bookmarks */}
@@ -203,7 +228,7 @@ export default function PlayerTab() {
               </div>
             ) : (
               <p className="text-[13px] text-[hsl(var(--sub))] text-center py-5">
-                No file loaded — drop audio files or click Browse below.
+                Select a track below to start listening.
               </p>
             )}
 
@@ -237,6 +262,7 @@ export default function PlayerTab() {
               </div>
             )}
           </Card>
+          )}
 
           {/* ── Playlist ────────────────────────────────────── */}
           <Card>
@@ -247,17 +273,23 @@ export default function PlayerTab() {
 
             {tracks.length === 0 ? (
               <div
+                role="button"
+                tabIndex={0}
+                aria-label="Add audio files to the playlist: drop them here or press Enter to browse"
                 className={cn(
-                  'border-2 border-dashed border-border rounded-lg m-3 p-8 text-center cursor-pointer transition-colors hover:border-primary',
+                  'flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg m-3 py-10 px-8 text-center cursor-pointer transition-colors hover:border-primary',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   dragOver && 'border-primary bg-primary/5'
                 )}
                 onDragOver={e => { e.preventDefault(); setDragOver(true) }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={handleDrop}
                 onClick={browseFiles}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); browseFiles() } }}
               >
-                <p className="text-sm text-foreground mb-1">Drop audio files here to listen</p>
-                <p className="text-[11px] text-[hsl(var(--sub))]">WAV · MP3 · FLAC · Opus · M4A · OGG and more</p>
+                <WaveformIcon />
+                <p className="text-[13px] font-semibold text-foreground">Drop audio files here to listen</p>
+                <p className="text-[11px] text-[hsl(var(--sub))]">No conversion needed — WAV · MP3 · FLAC · Opus · M4A · OGG and more</p>
               </div>
             ) : (
               <div className="p-2">

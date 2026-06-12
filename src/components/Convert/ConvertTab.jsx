@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { MODES, FORMATS_OUT, CH_COLORS } from '../../constants'
 import { PRESETS } from '../../presets'
@@ -39,8 +39,13 @@ export default function ConvertTab({
   const [scanProgress, setScanProgress] = useState({ current: 0, total: 0, fileName: '' })
   const [showAllProcessing, setShowAllProcessing] = useState(false)
 
-  // Clear analysis when files change
-  useEffect(() => { setAnalysis(null); setShowAllProcessing(false) }, [files])
+  // Clear analysis when files change (reset during render, not in an effect)
+  const [prevFiles, setPrevFiles] = useState(files)
+  if (files !== prevFiles) {
+    setPrevFiles(files)
+    setAnalysis(null)
+    setShowAllProcessing(false)
+  }
 
   const handleScan = async () => {
     if (!files.length || scanning) return
@@ -63,6 +68,9 @@ export default function ConvertTab({
 
       if (results.length > 0) {
         // Aggregate: use worst-case across all files
+        // speechRatio is absent when the VAD model isn't installed — average
+        // only real values so a missing model doesn't read as "0% speech"
+        const speechRatios = results.filter(r => r.speechRatio != null).map(r => r.speechRatio)
         const aggregated = {
           ...results[0],
           needsDenoise: results.some(r => r.needsDenoise),
@@ -72,7 +80,9 @@ export default function ConvertTab({
           recommendations: [...new Set(results.flatMap(r => r.recommendations || []))],
           qualityScore: results[0].qualityScore,
           speakerCount: Math.max(...results.map(r => r.speakerCount || 0)) || null,
-          speechRatio: results.reduce((sum, r) => sum + (r.speechRatio || 0), 0) / results.length,
+          speechRatio: speechRatios.length
+            ? speechRatios.reduce((sum, r) => sum + r, 0) / speechRatios.length
+            : null,
         }
         setAnalysis(aggregated)
 
@@ -95,23 +105,61 @@ export default function ConvertTab({
       <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
         <div className="max-w-[920px] mx-auto px-7 py-5 flex flex-col gap-3.5">
 
+          {/* ── FILES (drop zone + queue) — the workflow starts here ─────── */}
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="Add audio files: drop them here or press Enter to browse"
+            className={`flex flex-col items-center justify-center gap-2 py-8 px-6 border-2 border-dashed rounded-xl cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dragOver ? 'border-primary bg-[hsl(var(--gold-dim))]' : 'border-border/60 hover:border-border hover:bg-secondary/30'}`}
+            onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
+            onClick={browseFiles}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); browseFiles() } }}>
+            <WaveformIcon />
+            <p className="text-[13px] font-semibold text-foreground">Drop audio files here</p>
+            <p className="text-[11px] text-[hsl(var(--sub))] text-center">or <span className="text-primary cursor-pointer hover:underline">click to browse</span> — MP3 · WAV · FLAC · M4A · OGG · Opus · WMA + court formats (SGMCA · TRM · BWF)</p>
+          </div>
+
+          {files.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[11px] text-[hsl(var(--sub))]">{files.length} file{files.length!==1?'s':''} queued</span>
+                {!converting && <button className="text-[11px] text-[hsl(var(--sub))] hover:text-foreground transition-colors cursor-pointer" onClick={() => clearAll(converting)}>Clear all</button>}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {files.map(f => <FileRow key={f.path} file={f} job={jobs[f.path]} onRemove={() => removeFile(f.path, converting)} converting={converting} />)}
+              </div>
+            </div>
+          )}
+
           {/* ── PRESETS ──────────────────────────────────────────────────── */}
+          {/* Highlight the preset the current settings match, so users can
+              see which preset is active and when they've diverged from it */}
           <div className="flex items-center gap-1.5 flex-wrap mb-2">
             <Label>PRESET</Label>
-            {PRESETS.map(p => (
-              <Button key={p.id} variant="outline" size="sm" className="rounded-full" title={p.desc}
-                onClick={() => {
-                  const s = p.settings
-                  setMode(s.mode); setFormatOut(s.format); setRate(s.rate)
-                  setNormalize(s.normalize); setTrim(s.trim); setFade(s.fade)
-                  setFadeDur(s.fadeDur); setHpf(s.hpf)
-                  setDenoise(s.denoise); setDenoiseQuality(s.denoiseQuality)
-                  setAutoLevel(s.autoLevel); setDeclip(s.declip)
-                  setEnhance(s.enhance); setDereverb(s.dereverb)
-                }}>
-                {p.name}
-              </Button>
-            ))}
+            {PRESETS.map(p => {
+              const s = p.settings
+              const active = mode === s.mode && formatOut === s.format && rate === s.rate
+                && normalize === s.normalize && trim === s.trim && fade === s.fade
+                && fadeDur === s.fadeDur && hpf === s.hpf
+                && denoise === s.denoise && denoiseQuality === s.denoiseQuality
+                && autoLevel === s.autoLevel && declip === s.declip
+                && enhance === s.enhance && dereverb === s.dereverb
+              return (
+                <Button key={p.id} variant="outline" size="sm" title={p.desc}
+                  aria-pressed={active}
+                  className={`rounded-full ${active ? 'border-primary bg-[hsl(var(--gold-dim))] text-primary' : ''}`}
+                  onClick={() => {
+                    setMode(s.mode); setFormatOut(s.format); setRate(s.rate)
+                    setNormalize(s.normalize); setTrim(s.trim); setFade(s.fade)
+                    setFadeDur(s.fadeDur); setHpf(s.hpf)
+                    setDenoise(s.denoise); setDenoiseQuality(s.denoiseQuality)
+                    setAutoLevel(s.autoLevel); setDeclip(s.declip)
+                    setEnhance(s.enhance); setDereverb(s.dereverb)
+                  }}>
+                  {p.name}
+                </Button>
+              )
+            })}
           </div>
 
           {/* ── OUTPUT MODE ──────────────────────────────────────────────── */}
@@ -121,7 +169,8 @@ export default function ConvertTab({
               <div className="grid grid-cols-3 gap-2 p-3">
                 {MODES.map(m => (
                   <button key={m.id}
-                    className={`flex items-center gap-3 p-2.5 rounded-lg border transition-colors cursor-pointer ${mode===m.id ? 'border-primary bg-[hsl(var(--gold-dim))]' : 'border-transparent hover:bg-secondary/50'}`}
+                    aria-pressed={mode===m.id}
+                    className={`flex items-center gap-3 p-2.5 rounded-lg border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${mode===m.id ? 'border-primary bg-[hsl(var(--gold-dim))]' : 'border-transparent hover:bg-secondary/50'}`}
                     onClick={() => setMode(m.id)}>
                     <ModeIcon id={m.id} active={mode===m.id} />
                     <div className="flex flex-col items-start">
@@ -136,6 +185,9 @@ export default function ConvertTab({
           </Card>
 
           {/* ── CHANNELS (labels + mix) ────────────────────────────────── */}
+          {/* Only meaningful once files are queued, and not in keep mode —
+              keep mode preserves channels untouched and ignores labels */}
+          {files.length > 0 && mode !== 'keep' && (
           <Card>
             <CardHeader>
               <CardTitle>CHANNELS</CardTitle>
@@ -143,7 +195,6 @@ export default function ConvertTab({
                 {mode === 'stereo' && autoLevel && 'Name channels — volume managed by auto-level'}
                 {mode === 'stereo' && !autoLevel && 'Name channels and adjust mix volumes'}
                 {mode === 'split' && 'Channel names used as output filenames'}
-                {mode === 'keep' && 'Channel names saved to library for reference'}
               </span>
             </CardHeader>
             <CardContent>
@@ -157,6 +208,7 @@ export default function ConvertTab({
                     {mode === 'stereo' && (
                       <>
                         <input type="range" min="0" max="2" step="0.05" value={autoLevel ? 1.0 : chanVols[i]}
+                          aria-label={`Mix volume for channel ${i+1}`}
                           className={`flex-1 h-1 accent-primary cursor-pointer ${autoLevel ? 'opacity-40' : ''}`}
                           disabled={autoLevel}
                           onChange={e => setChanVols(p => p.map((x,j) => j===i ? parseFloat(e.target.value):x))} />
@@ -170,6 +222,7 @@ export default function ConvertTab({
               </div>
             </CardContent>
           </Card>
+          )}
 
           {/* ── AUDIO PROCESSING (unified panel) ─────────────────────────── */}
           <Card>
@@ -404,7 +457,8 @@ export default function ConvertTab({
               <div className="flex gap-px bg-secondary rounded-md p-0.5">
                 {FORMATS_OUT.map(f => (
                   <button key={f.id} title={f.desc}
-                    className={`px-2.5 py-1.5 text-[11px] font-semibold rounded-md transition-colors cursor-pointer ${formatOut===f.id ? 'bg-card text-foreground shadow-sm' : 'text-[hsl(var(--sub))] hover:text-[hsl(var(--text2))]'}`}
+                    aria-pressed={formatOut===f.id}
+                    className={`px-2.5 py-1.5 text-[11px] font-semibold rounded-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${formatOut===f.id ? 'bg-card text-foreground shadow-sm' : 'text-[hsl(var(--sub))] hover:text-[hsl(var(--text2))]'}`}
                     onClick={() => setFormatOut(f.id)}>{f.label}</button>
                 ))}
               </div>
@@ -412,27 +466,6 @@ export default function ConvertTab({
           </div>
 
           <FormatTable />
-
-          {/* Drop zone */}
-          <div className={`flex flex-col items-center justify-center gap-2 py-8 px-6 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${dragOver ? 'border-primary bg-[hsl(var(--gold-dim))]' : 'border-border/60 hover:border-border hover:bg-secondary/30'}`}
-            onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
-            onClick={browseFiles}>
-            <WaveformIcon />
-            <p className="text-[13px] font-semibold text-foreground">Drop audio files here</p>
-            <p className="text-[11px] text-[hsl(var(--sub))] text-center">or <span className="text-primary cursor-pointer hover:underline">click to browse</span> — MP3 · WAV · FLAC · M4A · OGG · Opus · WMA + court formats (SGMCA · TRM · BWF)</p>
-          </div>
-
-          {files.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[11px] text-[hsl(var(--sub))]">{files.length} file{files.length!==1?'s':''} queued</span>
-                {!converting && <button className="text-[11px] text-[hsl(var(--sub))] hover:text-foreground transition-colors cursor-pointer" onClick={() => clearAll(converting)}>Clear all</button>}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                {files.map(f => <FileRow key={f.path} file={f} job={jobs[f.path]} onRemove={() => removeFile(f.path, converting)} converting={converting} />)}
-              </div>
-            </div>
-          )}
 
         </div>
       </div>
