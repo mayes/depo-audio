@@ -102,6 +102,9 @@ pub struct ConvertJob {
     pub mode: String,
     pub format: String,
     pub rate: String,
+    /// MP3 encoding bitrate in kbps (128, 192, or 320). Ignored for non-MP3 output.
+    #[serde(default = "default_mp3_bitrate")]
+    pub mp3_bitrate: u32,
     pub labels: Vec<String>,
     pub chan_vols: Vec<f64>,
     pub normalize: bool,
@@ -270,6 +273,8 @@ pub struct Prefs {
     pub mode: String,
     pub format: String,
     pub rate: String,
+    #[serde(default = "default_mp3_bitrate")]
+    pub mp3_bitrate: u32,
     pub out_dir: String,
     pub labels: Vec<String>,
     pub chan_vols: Vec<f64>,
@@ -323,6 +328,7 @@ impl Default for Prefs {
             mode: "stereo".into(),
             format: "wav".into(),
             rate: "48000".into(),
+            mp3_bitrate: 192,
             out_dir: "".into(),
             labels: vec!["Speaker 1".into(), "Speaker 2".into(), "Speaker 3".into(), "Speaker 4".into()],
             chan_vols: vec![1.0, 1.0, 1.0, 1.0],
@@ -352,6 +358,8 @@ impl Default for Prefs {
 }
 
 fn default_denoise_quality() -> String { "fast".into() }
+/// Default MP3 bitrate (kbps). Matches the historical fixed 192 kbps output.
+fn default_mp3_bitrate() -> u32 { 192 }
 fn default_hpf_cutoff() -> f64 { 80.0 }
 fn default_normalize_lufs() -> f64 { -16.0 }
 fn default_normalize_tp() -> f64 { -1.5 }

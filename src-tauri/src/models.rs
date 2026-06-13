@@ -15,11 +15,12 @@ pub(crate) fn set_ort_preflight(result: Result<(), String>) {
 
 // ── ONNX model loader ───────────────────────────────────────────────────────
 //
-// Lazily loads ONNX models on first use. Models are bundled in the app's
-// resource directory under resources/models/.
+// Lazily loads ONNX models on first use. The light models ship bundled in the
+// app's resource directory under resources/models/.
 //
-// Heavier models (speaker_embed.onnx) can optionally be downloaded on demand
-// rather than bundled, to keep the installer small.
+// Heavier and optional models (the 38 MB speaker_embed.onnx, plus dnsmos and
+// gtcrn) are not bundled — they are downloaded on demand from the models
+// release into the app data directory, keeping the installer small.
 
 /// Resolve a model file path. User-downloaded models live in the app data
 /// directory (writable on installed apps — the resource dir is read-only in

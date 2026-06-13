@@ -120,7 +120,7 @@ DepoAudio
 │   │   ├── speakers.rs         # Speaker count detection
 │   │   ├── types.rs            # Shared type definitions
 │   │   └── persistence.rs      # Library & prefs storage
-│   ├── resources/models/       # Bundled ONNX models (~57MB)
+│   ├── resources/models/       # Bundled light ONNX models (~20MB)
 │   └── binaries/               # FFmpeg/FFprobe sidecars (not committed)
 └── .github/workflows/          # CI/CD (release builds)
 ```
@@ -129,14 +129,20 @@ DepoAudio
 
 ### AI Models
 
-| Model | Size | Purpose |
-|-------|------|---------|
-| Smart Turn v3 (int8) | 8.2 MB | Speaker turn detection |
-| FlashSR | 487 KB | Bandwidth extension (16→48 kHz) |
-| DeepFilterNet3 (3 files) | 8.2 MB | Premium speech denoising |
-| DNSMOS | 297 KB | Audio quality scoring |
-| Speaker segmentation (int8) | 1.5 MB | Speaker count detection |
-| Speaker embedding | 38 MB | Speaker identification |
+Light models ship bundled with the app. Larger and optional models download on
+demand from the [`models-v1`](https://github.com/mayes/depo-audio/releases/tag/models-v1)
+release into the app data directory (SHA-256 verified) the first time their
+feature is used, keeping the installer small.
+
+| Model | Size | Purpose | Delivery |
+|-------|------|---------|----------|
+| Silero VAD | 2.1 MB | Voice activity detection | Bundled |
+| Smart Turn v3 (int8) | 8.2 MB | Speaker turn detection | Bundled |
+| FlashSR | 487 KB | Bandwidth extension (16→48 kHz) | Bundled |
+| DeepFilterNet3 (3 files) | 8.2 MB | Premium speech denoising | Bundled |
+| Speaker segmentation (int8) | 1.5 MB | Speaker count detection | Bundled |
+| Speaker embedding | 38 MB | Speaker identification | Download on demand |
+| DNSMOS | 297 KB | Audio quality scoring | Download on demand |
 
 ## Releasing
 

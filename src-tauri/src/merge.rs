@@ -235,7 +235,9 @@ pub(crate) async fn merge_audio(
 
     // Convert to target format
     let ext = crate::helpers::output_ext(&job.format);
-    let out_codec = crate::helpers::output_args(&job.format, &job.rate);
+    // Merge output uses the default MP3 bitrate; per-conversion bitrate selection
+    // lives on the Convert tab.
+    let out_codec = crate::helpers::output_args(&job.format, &job.rate, 192);
 
     let out_dir = if job.out_dir.is_empty() {
         Path::new(&job.sources[0]).parent().unwrap_or(Path::new(".")).to_path_buf()

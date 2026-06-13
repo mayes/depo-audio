@@ -166,9 +166,21 @@ pub(crate) fn strip_sgmca_header(src: &Path) -> Result<(PathBuf, bool), String> 
 
 // ── Output format helpers ─────────────────────────────────────────────────────
 
-pub(crate) fn output_args(format: &str, rate: &str) -> Vec<String> {
+/// Clamp a requested MP3 bitrate to a supported value (kbps). Anything outside
+/// the offered set falls back to 192, the long-standing default.
+pub(crate) fn mp3_bitrate_kbps(requested: u32) -> u32 {
+    match requested {
+        128 | 192 | 320 => requested,
+        _ => 192,
+    }
+}
+
+pub(crate) fn output_args(format: &str, rate: &str, mp3_bitrate: u32) -> Vec<String> {
     match format {
-        "mp3"  => vec!["-acodec".into(), "libmp3lame".into(), "-b:a".into(), "192k".into(),  "-ar".into(), rate.into()],
+        "mp3"  => {
+            let br = format!("{}k", mp3_bitrate_kbps(mp3_bitrate));
+            vec!["-acodec".into(), "libmp3lame".into(), "-b:a".into(), br, "-ar".into(), rate.into()]
+        }
         "flac" => vec!["-c:a".into(), "flac".into(), "-ar".into(), rate.into()],
         "opus" => vec!["-c:a".into(), "libopus".into(), "-b:a".into(), "64k".into(), "-vbr".into(), "on".into(), "-ar".into(), "48000".into()],
         "m4a"  => vec!["-c:a".into(), "aac".into(), "-b:a".into(), "128k".into(), "-ar".into(), rate.into()],
@@ -287,6 +299,33 @@ mod tests {
         assert_eq!(output_ext("m4a"), ".m4a");
         assert_eq!(output_ext("wav"), ".wav");
         assert_eq!(output_ext("unknown"), ".wav");
+    }
+
+    #[test]
+    fn mp3_bitrate_clamps_to_supported() {
+        assert_eq!(mp3_bitrate_kbps(128), 128);
+        assert_eq!(mp3_bitrate_kbps(192), 192);
+        assert_eq!(mp3_bitrate_kbps(320), 320);
+        // Anything off the menu falls back to 192
+        assert_eq!(mp3_bitrate_kbps(0), 192);
+        assert_eq!(mp3_bitrate_kbps(256), 192);
+        assert_eq!(mp3_bitrate_kbps(9999), 192);
+    }
+
+    #[test]
+    fn output_args_mp3_uses_selected_bitrate() {
+        let args = output_args("mp3", "48000", 320);
+        assert!(args.contains(&"libmp3lame".to_string()));
+        assert!(args.contains(&"320k".to_string()));
+
+        // Invalid bitrate falls back to 192k
+        let fallback = output_args("mp3", "48000", 256);
+        assert!(fallback.contains(&"192k".to_string()));
+
+        // Non-MP3 formats ignore the bitrate argument entirely
+        let wav = output_args("wav", "48000", 320);
+        assert!(wav.contains(&"pcm_s16le".to_string()));
+        assert!(!wav.iter().any(|a| a.ends_with('k')));
     }
 
     #[test]
