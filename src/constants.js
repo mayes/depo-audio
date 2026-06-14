@@ -6,10 +6,17 @@ export const MODES = [
 
 export const FORMATS_OUT = [
   { id: 'wav',  label: 'WAV',  desc: 'Lossless PCM — editing' },
-  { id: 'mp3',  label: 'MP3',  desc: '192 kbps — scopists / email' },
+  { id: 'mp3',  label: 'MP3',  desc: '128–320 kbps — scopists / email' },
   { id: 'flac', label: 'FLAC', desc: 'Lossless compressed — archival' },
   { id: 'opus', label: 'Opus', desc: '64 kbps VBR — voice optimized, smallest' },
   { id: 'm4a',  label: 'M4A',  desc: '128 kbps AAC — Apple devices' },
+]
+
+// Selectable MP3 bitrates (kbps), shown when MP3 output is chosen.
+export const MP3_BITRATES = [
+  { value: 128, label: '128k', desc: 'Smallest — email' },
+  { value: 192, label: '192k', desc: 'Balanced — general use' },
+  { value: 320, label: '320k', desc: 'Highest quality' },
 ]
 
 export const CH_COLORS = ['#c49a36','#4a8fdf','#3a9e6a','#c94e4e']

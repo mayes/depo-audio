@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { MODES, FORMATS_OUT, CH_COLORS } from '../../constants'
+import { MODES, FORMATS_OUT, MP3_BITRATES, CH_COLORS } from '../../constants'
 import { PRESETS } from '../../presets'
 import { usePreferencesContext } from '../../hooks/PreferencesContext'
 import { Loader2 } from 'lucide-react'
@@ -26,6 +26,7 @@ export default function ConvertTab({
   const {
     mode, setMode, formatOut, setFormatOut, labels, setLabels,
     chanVols, setChanVols, outDir, setOutDir, rate, setRate,
+    mp3Bitrate, setMp3Bitrate,
     normalize, setNormalize, trim, setTrim, fade, setFade,
     fadeDur, setFadeDur, hpf, setHpf,
     denoise, setDenoise, denoiseQuality, setDenoiseQuality,
@@ -468,6 +469,19 @@ export default function ConvertTab({
                 ))}
               </div>
             </div>
+            {formatOut === 'mp3' && (
+              <div>
+                <Label className="mb-1 block">MP3 BITRATE</Label>
+                <div className="flex gap-px bg-secondary rounded-md p-0.5">
+                  {MP3_BITRATES.map(b => (
+                    <button key={b.value} title={b.desc}
+                      aria-pressed={mp3Bitrate===b.value}
+                      className={`px-2.5 py-1.5 text-[11px] font-semibold rounded-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${mp3Bitrate===b.value ? 'bg-card text-foreground shadow-sm' : 'text-[hsl(var(--sub))] hover:text-[hsl(var(--text2))]'}`}
+                      onClick={() => setMp3Bitrate(b.value)}>{b.label}</button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <FormatTable />

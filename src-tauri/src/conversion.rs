@@ -58,7 +58,7 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
     };
 
     let ext = output_ext(&job.format);
-    let out_codec = output_args(&job.format, &job.rate);
+    let out_codec = output_args(&job.format, &job.rate, job.mp3_bitrate);
 
     // ── AI pre-processing step ──────────────────────────────────────────────
     // Uses in-memory AudioBuffer pipeline to eliminate intermediate temp WAV files.

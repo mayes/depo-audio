@@ -9,7 +9,7 @@ export default function useConversion() {
   const [converting, setConverting] = useState(false)
   const convertingRef = useRef(false)
 
-  const startConversion = useCallback(async ({ files, outDir, mode, formatOut, rate, labels, chanVols, normalize, trim, fade, fadeDur, hpf, denoise, denoiseQuality, autoLevel, declip, enhance, dereverb, hpfCutoff, normalizeLufs, normalizeTp, silenceThresh, ffmpegTimeout, maxFileSizeGb, caseName, setCases }) => {
+  const startConversion = useCallback(async ({ files, outDir, mode, formatOut, rate, mp3Bitrate, labels, chanVols, normalize, trim, fade, fadeDur, hpf, denoise, denoiseQuality, autoLevel, declip, enhance, dereverb, hpfCutoff, normalizeLufs, normalizeTp, silenceThresh, ffmpegTimeout, maxFileSizeGb, caseName, setCases }) => {
     if (convertingRef.current || !files.length) return
     convertingRef.current = true
     setConverting(true)
@@ -69,6 +69,7 @@ export default function useConversion() {
         Promise.all([unDone, unErr]).then(() => invoke('convert', { job: {
           id, srcPath: file.path, outDir: resolved, mode,
           format: formatOut, rate: formatOut === 'opus' ? '48000' : rate,
+          mp3Bitrate: mp3Bitrate ?? 192,
           labels, chanVols, normalize, trim, fade, fadeDur, hpf,
           denoise, denoiseQuality, autoLevel, declip, enhance, dereverb,
           hpfCutoff: hpfCutoff ?? 80, normalizeLufs: normalizeLufs ?? -16,

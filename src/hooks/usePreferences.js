@@ -8,6 +8,7 @@ export default function usePreferences() {
   const [chanVols, setChanVols]   = useState([1,1,1,1])
   const [outDir, setOutDir]       = useState('')
   const [rate, setRate]           = useState('48000')
+  const [mp3Bitrate, setMp3Bitrate] = useState(192)
   const [normalize, setNormalize] = useState(false)
   const [trim, setTrim]           = useState(false)
   const [fade, setFade]           = useState(false)
@@ -41,6 +42,7 @@ export default function usePreferences() {
       if (startMode)   setMode(startMode)
       if (startFormat) setFormatOut(startFormat)
       if (p.rate)      setRate(p.rate)
+      if (p.mp3Bitrate != null) setMp3Bitrate(p.mp3Bitrate)
       if (p.outDir !== undefined) setOutDir(p.outDir)
       if (p.labels?.length) setLabels(p.labels)
       if (p.chanVols?.length) setChanVols(p.chanVols)
@@ -67,14 +69,14 @@ export default function usePreferences() {
     if (!prefsReady) return
     const timer = setTimeout(() => {
       invoke('prefs_set', { patch: {
-        mode, format: formatOut, rate, outDir, labels, chanVols, normalize, trim, fade, fadeDur, hpf,
+        mode, format: formatOut, rate, mp3Bitrate, outDir, labels, chanVols, normalize, trim, fade, fadeDur, hpf,
         denoise, denoiseQuality, autoLevel, declip, enhance, dereverb,
         hpfCutoff, normalizeLufs, normalizeTp, silenceThresh,
         ffmpegTimeout, maxScanDepth, maxFileSizeGb, defaultOutputFormat, defaultOutputMode,
       } })
     }, 500)
     return () => clearTimeout(timer)
-  }, [mode, formatOut, rate, outDir, labels, chanVols, normalize, trim, fade, fadeDur, hpf,
+  }, [mode, formatOut, rate, mp3Bitrate, outDir, labels, chanVols, normalize, trim, fade, fadeDur, hpf,
       denoise, denoiseQuality, autoLevel, declip, enhance, dereverb,
       hpfCutoff, normalizeLufs, normalizeTp, silenceThresh,
       ffmpegTimeout, maxScanDepth, maxFileSizeGb, defaultOutputFormat, defaultOutputMode,
@@ -87,6 +89,7 @@ export default function usePreferences() {
     chanVols, setChanVols,
     outDir, setOutDir,
     rate, setRate,
+    mp3Bitrate, setMp3Bitrate,
     normalize, setNormalize,
     trim, setTrim,
     fade, setFade,
