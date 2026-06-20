@@ -148,6 +148,8 @@ export default function ConvertTab({
                 && denoise === s.denoise && denoiseQuality === s.denoiseQuality
                 && autoLevel === s.autoLevel && declip === s.declip
                 && enhance === s.enhance && dereverb === s.dereverb
+                // Bitrate only matters for MP3; presets default to 192 kbps
+                && (s.format !== 'mp3' || mp3Bitrate === (s.mp3Bitrate ?? 192))
               return (
                 <Button key={p.id} variant="outline" size="sm" title={p.desc}
                   aria-pressed={active}
@@ -159,6 +161,7 @@ export default function ConvertTab({
                     setDenoise(s.denoise); setDenoiseQuality(s.denoiseQuality)
                     setAutoLevel(s.autoLevel); setDeclip(s.declip)
                     setEnhance(s.enhance); setDereverb(s.dereverb)
+                    if (s.format === 'mp3') setMp3Bitrate(s.mp3Bitrate ?? 192)
                   }}>
                   {p.name}
                 </Button>
@@ -205,7 +208,7 @@ export default function ConvertTab({
               <div className="flex flex-col gap-1 p-3">
                 {labels.map((l,i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{background:CH_COLORS[i]}} />
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{background:CH_COLORS[i % CH_COLORS.length]}} />
                     <span className="font-mono text-[10px] text-[hsl(var(--sub))] shrink-0 w-7">CH {i+1}</span>
                     <Input className="h-7 text-[11px] w-32 shrink-0" value={l} maxLength={24} placeholder={`Channel ${i+1}`}
                       onChange={e => setLabels(p => p.map((v,j) => j===i ? e.target.value:v))} />

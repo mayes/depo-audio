@@ -188,7 +188,7 @@ pub async fn convert(
 
 #[tauri::command]
 pub fn library_get(app: AppHandle, state: State<'_, AppState>) -> Vec<Case> {
-    let mut lib = state.library.lock().unwrap();
+    let mut lib = state.library.lock().unwrap_or_else(|e| e.into_inner());
     // Load from disk only if in-memory state is empty (first call)
     if lib.cases.is_empty() {
         let loaded = load_library(&app);
@@ -199,32 +199,36 @@ pub fn library_get(app: AppHandle, state: State<'_, AppState>) -> Vec<Case> {
 
 #[tauri::command]
 pub fn library_rename_case(app: AppHandle, state: State<'_, AppState>, case_id: String, name: String) -> bool {
-    let mut lib = state.library.lock().unwrap();
-    if let Some(c) = lib.cases.iter_mut().find(|c| c.id == case_id) { c.name = name; }
-    save_library(&app, &lib).is_ok()
+    let mut lib = state.library.lock().unwrap_or_else(|e| e.into_inner());
+    let found = if let Some(c) = lib.cases.iter_mut().find(|c| c.id == case_id) { c.name = name; true } else { false };
+    found && save_library(&app, &lib).is_ok()
 }
 
 #[tauri::command]
 pub fn library_archive_case(app: AppHandle, state: State<'_, AppState>, case_id: String, archived: bool) -> bool {
-    let mut lib = state.library.lock().unwrap();
-    if let Some(c) = lib.cases.iter_mut().find(|c| c.id == case_id) { c.archived = archived; }
-    save_library(&app, &lib).is_ok()
+    let mut lib = state.library.lock().unwrap_or_else(|e| e.into_inner());
+    let found = if let Some(c) = lib.cases.iter_mut().find(|c| c.id == case_id) { c.archived = archived; true } else { false };
+    found && save_library(&app, &lib).is_ok()
 }
 
 #[tauri::command]
 pub fn library_delete_case(app: AppHandle, state: State<'_, AppState>, case_id: String) -> bool {
-    let mut lib = state.library.lock().unwrap();
+    let mut lib = state.library.lock().unwrap_or_else(|e| e.into_inner());
+    let before = lib.cases.len();
     lib.cases.retain(|c| c.id != case_id);
-    save_library(&app, &lib).is_ok()
+    let removed = lib.cases.len() != before;
+    removed && save_library(&app, &lib).is_ok()
 }
 
 #[tauri::command]
 pub fn library_delete_session(app: AppHandle, state: State<'_, AppState>, case_id: String, session_id: String) -> bool {
-    let mut lib = state.library.lock().unwrap();
-    if let Some(c) = lib.cases.iter_mut().find(|c| c.id == case_id) {
+    let mut lib = state.library.lock().unwrap_or_else(|e| e.into_inner());
+    let removed = if let Some(c) = lib.cases.iter_mut().find(|c| c.id == case_id) {
+        let before = c.sessions.len();
         c.sessions.retain(|s| s.id != session_id);
-    }
-    save_library(&app, &lib).is_ok()
+        c.sessions.len() != before
+    } else { false };
+    removed && save_library(&app, &lib).is_ok()
 }
 
 #[tauri::command]
@@ -248,12 +252,15 @@ pub fn library_import_file(
         .collect();
     if sanitized_name.is_empty() { return Err("Case name contains only invalid characters".into()); }
 
-    let mut lib = state.library.lock().map_err(|e| e.to_string())?;
+    let mut lib = state.library.lock().unwrap_or_else(|e| e.into_inner());
     let size = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
     let ext = Path::new(&path).extension().and_then(|e| e.to_str()).unwrap_or("wav").to_lowercase();
     let source_name = Path::new(&path).file_name().and_then(|n| n.to_str()).unwrap_or("imported").to_string();
-    let idx = lib.cases.iter().position(|c| !c.archived && c.name.to_lowercase() == sanitized_name.to_lowercase());
+    let idx = crate::persistence::find_case_idx(&lib.cases, &sanitized_name);
     let case = if let Some(i) = idx {
+        // Importing into an existing case re-activates it if archived — the
+        // user is explicitly adding content, so it should be visible again.
+        lib.cases[i].archived = false;
         &mut lib.cases[i]
     } else {
         lib.cases.push(Case { id: Uuid::new_v4().to_string(), name: sanitized_name.clone(), created_at: Utc::now().to_rfc3339(), archived: false, sessions: vec![] });
@@ -279,13 +286,13 @@ pub fn prefs_get(app: AppHandle, state: State<'_, AppState>) -> Prefs {
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok())
         .unwrap_or_default();
-    *state.prefs.lock().unwrap() = loaded.clone();
+    *state.prefs.lock().unwrap_or_else(|e| e.into_inner()) = loaded.clone();
     loaded
 }
 
 #[tauri::command]
 pub fn prefs_set(app: AppHandle, state: State<'_, AppState>, patch: serde_json::Value) -> bool {
-    let mut prefs = state.prefs.lock().unwrap();
+    let mut prefs = state.prefs.lock().unwrap_or_else(|e| e.into_inner());
     if let Ok(mut current) = serde_json::to_value(prefs.clone()) {
         if let serde_json::Value::Object(ref mut map) = current {
             if let serde_json::Value::Object(patch_map) = patch {
@@ -297,11 +304,10 @@ pub fn prefs_set(app: AppHandle, state: State<'_, AppState>, patch: serde_json::
         }
     }
     let path = prefs_path(&app);
-    if let Some(parent) = path.parent() { let _ = fs::create_dir_all(parent); }
-    if let Ok(json) = serde_json::to_string_pretty(&*prefs) {
-        let _ = fs::write(path, json);
+    match serde_json::to_string_pretty(&*prefs) {
+        Ok(json) => crate::persistence::atomic_write(&path, json.as_bytes()).is_ok(),
+        Err(_) => false,
     }
-    true
 }
 
 // ── Shell / opener commands ───────────────────────────────────────────────────

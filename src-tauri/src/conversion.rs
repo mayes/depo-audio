@@ -149,9 +149,13 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
         if active.is_empty() { 1.0 } else { active.iter().sum::<f64>() / active.len() as f64 }
     });
 
+    // Stereo injects per-channel gains in the pan filter, and split injects
+    // them per channel below. Only "keep" (a single multi-channel file, where
+    // channels can't be addressed individually) folds the averaged gain into
+    // the shared chain.
     let proc = build_proc_filters_with_gain(
         app, job, effective_feed,
-        if job.auto_level && job.mode != "stereo" { default_gain } else { None },
+        if job.auto_level && job.mode == "keep" { default_gain } else { None },
     ).await;
 
     // When AI processing ran, the feed is our own PCM WAV — forcing the
@@ -199,7 +203,10 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
             args.extend(["-af".into(), all.join(",")]);
             args.extend(out_codec.clone());
             args.extend(["-y".into(), dst.to_string_lossy().to_string()]);
-            run_ffmpeg_with_timeout(app, args, &job.id, job.ffmpeg_timeout as u64).await?;
+            if let Err(e) = run_ffmpeg_with_timeout(app, args, &job.id, job.ffmpeg_timeout as u64).await {
+                let _ = fs::remove_file(&dst);
+                return Err(e);
+            }
             output_paths.push(dst);
         }
 
@@ -211,7 +218,10 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
             }
             args.extend(out_codec.clone());
             args.extend(["-y".into(), dst.to_string_lossy().to_string()]);
-            run_ffmpeg_with_timeout(app, args, &job.id, job.ffmpeg_timeout as u64).await?;
+            if let Err(e) = run_ffmpeg_with_timeout(app, args, &job.id, job.ffmpeg_timeout as u64).await {
+                let _ = fs::remove_file(&dst);
+                return Err(e);
+            }
             output_paths.push(dst);
         }
 
@@ -234,8 +244,22 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
             let sp_tags: Vec<String> = (0..num_ch as usize).map(|i| format!("sp{}", i)).collect();
             let split_str = format!("[0:a]asplit={}[{}]", num_ch, sp_tags.join("]["));
             let per_ch_proc = if proc.is_empty() { String::new() } else { format!(",{}", proc.join(",")) };
+            // Auto-level balances speakers by applying EACH channel's own gain
+            // (from analysis). Folding a single averaged gain — as the shared
+            // chain did — leaves the imbalance in place, so inject the
+            // per-channel gain right after the channel is isolated. (When
+            // loudnorm is also on it normalizes each channel anyway; this gain
+            // is what balances them when normalization is off.)
             let chain: Vec<String> = (0..num_ch as usize)
-                .map(|i| format!("[sp{}]pan=mono|c0=c{}{}[op{}]", i, i, per_ch_proc, i))
+                .map(|i| {
+                    let gain_str = if job.auto_level {
+                        match channel_gains.as_ref().and_then(|g| g.get(i)).copied() {
+                            Some(g) if (g - 1.0).abs() > 0.01 => format!(",volume={:.4}", g),
+                            _ => String::new(),
+                        }
+                    } else { String::new() };
+                    format!("[sp{}]pan=mono|c0=c{}{}{}[op{}]", i, i, gain_str, per_ch_proc, i)
+                })
                 .collect();
             let fc = std::iter::once(split_str).chain(chain).collect::<Vec<_>>().join(";");
             args.extend(["-filter_complex".into(), fc, "-y".into()]);
@@ -244,7 +268,10 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
                 args.extend(out_codec.clone());
                 args.push(dst.to_string_lossy().to_string());
             }
-            run_ffmpeg_with_timeout(app, args, &job.id, job.ffmpeg_timeout as u64).await?;
+            if let Err(e) = run_ffmpeg_with_timeout(app, args, &job.id, job.ffmpeg_timeout as u64).await {
+                for d in &dsts { let _ = fs::remove_file(d); }
+                return Err(e);
+            }
             output_paths.extend(dsts);
         }
 
@@ -257,6 +284,8 @@ async fn do_convert_inner(app: &AppHandle, job: &ConvertJob, feed: &Path, fmt: &
     }).collect();
 
     if let Some(empty) = files.iter().find(|f| f.size == 0) {
+        // Don't leave partial/empty outputs (or their valid siblings) behind.
+        for f in &files { let _ = fs::remove_file(&f.path); }
         // ai_temps cleaned up automatically via TempFile Drop
         return Err(format!("Output file is empty: {}", empty.name));
     }

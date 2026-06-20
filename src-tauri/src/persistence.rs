@@ -29,34 +29,47 @@ pub(crate) fn load_library(app: &AppHandle) -> Library {
         .unwrap_or_default()
 }
 
-pub(crate) fn save_library(app: &AppHandle, lib: &Library) -> Result<(), String> {
-    let path = lib_path(app);
+/// Write bytes to `path` atomically: a uniquely-named temp file is written and
+/// fsync'd, then renamed over the destination. Readers never observe a
+/// truncated or partial file, and a crash mid-write leaves the previous file
+/// intact. Falls back to a direct write so data is never lost outright.
+pub(crate) fn atomic_write(path: &std::path::Path, bytes: &[u8]) -> Result<(), String> {
     if let Some(parent) = path.parent() { let _ = fs::create_dir_all(parent); }
-    let json = serde_json::to_string_pretty(lib)
-        .map_err(|e| format!("Failed to serialize library: {}", e))?;
-    // Atomic replace: write a uniquely-named temp file, then rename over
-    // library.json. Readers never observe a truncated or partial file,
-    // and a crash mid-write leaves the previous library intact.
-    let tmp = path.with_extension(format!("json.{}.tmp", std::process::id()));
+    let tmp = path.with_extension(format!("tmp.{}", std::process::id()));
     let wrote = fs::OpenOptions::new()
         .write(true).create(true).truncate(true)
         .open(&tmp)
         .and_then(|mut file| {
-            file.write_all(json.as_bytes())?;
+            file.write_all(bytes)?;
             file.sync_all()
         })
-        .and_then(|_| fs::rename(&tmp, &path));
+        .and_then(|_| fs::rename(&tmp, path));
     if let Err(primary) = wrote {
         let _ = fs::remove_file(&tmp);
-        // Fallback: direct write (better than losing the data entirely)
-        fs::write(&path, &json)
-            .map_err(|_| format!("Failed to save library: {}", primary))?;
+        fs::write(path, bytes)
+            .map_err(|_| format!("Failed to write {}: {}", path.display(), primary))?;
     }
     Ok(())
 }
 
+pub(crate) fn save_library(app: &AppHandle, lib: &Library) -> Result<(), String> {
+    let path = lib_path(app);
+    let json = serde_json::to_string_pretty(lib)
+        .map_err(|e| format!("Failed to serialize library: {}", e))?;
+    atomic_write(&path, json.as_bytes())
+}
+
+/// Find a case by name (case-insensitive), regardless of archived state. Both
+/// auto-filing (below) and manual import use this so they agree on whether a
+/// case already exists — matching on different rules previously let an import
+/// silently create a duplicate of an archived case.
+pub(crate) fn find_case_idx(cases: &[Case], name: &str) -> Option<usize> {
+    let lower = name.to_lowercase();
+    cases.iter().position(|c| c.name.to_lowercase() == lower)
+}
+
 pub(crate) fn save_to_library(app: &AppHandle, state: &tauri::State<'_, AppState>, job: &ConvertJob, files: &[OutputFile]) {
-    let mut lib = state.library.lock().unwrap();
+    let mut lib = state.library.lock().unwrap_or_else(|e| e.into_inner());
 
     let source_name = basename(&job.src_path);
     let case_name = job.case_name.clone()
@@ -84,8 +97,7 @@ pub(crate) fn save_to_library(app: &AppHandle, state: &tauri::State<'_, AppState
         participants,
     };
 
-    let case_name_lower = case_name.to_lowercase();
-    let case_idx = lib.cases.iter().position(|c| c.name.to_lowercase() == case_name_lower);
+    let case_idx = find_case_idx(&lib.cases, &case_name);
     if let Some(idx) = case_idx {
         lib.cases[idx].sessions.push(session);
     } else {
@@ -101,4 +113,22 @@ pub(crate) fn save_to_library(app: &AppHandle, state: &tauri::State<'_, AppState
     // Conversion already succeeded and the files exist on disk; a failed
     // library save should not fail the conversion itself.
     let _ = save_library(app, &lib);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn case(name: &str, archived: bool) -> Case {
+        Case { id: name.into(), name: name.into(), created_at: String::new(), archived, sessions: vec![] }
+    }
+
+    #[test]
+    fn find_case_idx_is_case_insensitive_and_archived_agnostic() {
+        let cases = vec![case("Smith", true), case("Jones", false)];
+        // Matches an archived case (so import and auto-file agree → no dupes)
+        assert_eq!(find_case_idx(&cases, "smith"), Some(0));
+        assert_eq!(find_case_idx(&cases, "JONES"), Some(1));
+        assert_eq!(find_case_idx(&cases, "Doe"), None);
+    }
 }
