@@ -31,8 +31,17 @@
       }
     }
   },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/mayes/depo-audio/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVFNTQyQTA3NTlGNjI5MjUKUldRbEtmWlpCeXBVN3NTdmdPRGtnNjk0WU81RU03ZXN0N1ZManVyN05oR2JqM1l4ZCs2cmsxQm8K"
+    }
+  },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "icon": [
       "icons/32x32.png",
