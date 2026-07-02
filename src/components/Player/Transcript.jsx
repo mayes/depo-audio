@@ -198,7 +198,7 @@ export default function Transcript({ trackPath, currentTime, playing, onSeek }) 
                       <button
                         onClick={() => onSeek(s.start)}
                         title="Jump to this point"
-                        className="font-mono text-[10px] text-primary hover:underline focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring rounded"
+                        className="font-mono text-[10px] text-[hsl(var(--gold-hi))] hover:underline focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring rounded"
                       >
                         {fmtTime(s.start)}
                       </button>

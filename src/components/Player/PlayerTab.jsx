@@ -391,7 +391,7 @@ export default function PlayerTab({ dropHandlerRef }) {
                     .map((b) => (
                       <div key={`${b.time}-${b.trackPath}`} className="flex items-center gap-2 group">
                         <button
-                          className="font-mono text-[11px] text-primary hover:underline shrink-0 w-12 text-left focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring rounded"
+                          className="font-mono text-[11px] text-[hsl(var(--gold-hi))] hover:underline shrink-0 w-12 text-left focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring rounded"
                           title="Jump to bookmark"
                           onClick={() => { if (audioRef.current) audioRef.current.currentTime = b.time }}
                         >
