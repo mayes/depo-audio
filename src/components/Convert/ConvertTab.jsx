@@ -112,10 +112,39 @@ export default function ConvertTab({
     setScanning(false)
   }
 
+  // Guided stepper: reflects real state without gating anything — batch users
+  // can still work the whole page at once.
+  const step = converting ? 3 : files.length > 0 ? 2 : 1
+  const stepDone = (n) => n < step || (n === 3 && !converting && doneCount > 0 && files.length > 0)
+  const procCount = [denoise, autoLevel, declip, enhance, dereverb, hpf, normalize, trim, fade].filter(Boolean).length
+  const formatLabel = FORMATS_OUT.find(f => f.id === formatOut)?.label || formatOut
+  const modeLabel = MODES.find(m => m.id === mode)?.label || mode
+
   return (
     <>
       <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
         <div className="w-full max-w-[1100px] mx-auto px-5 md:px-8 py-5 flex flex-col gap-3.5">
+
+          {/* ── STEPPER (state-driven, purely informational) ─────────────── */}
+          <ol className="flex items-center gap-2.5 mb-1" aria-label="Conversion progress">
+            {['Add recording', 'Choose settings', 'Convert'].map((label, i) => {
+              const n = i + 1
+              const done = stepDone(n)
+              const now = !done && n === step
+              return (
+                <li key={label} className="flex items-center gap-2.5" aria-current={now ? 'step' : undefined}>
+                  <span aria-hidden="true" className={`w-6 h-6 rounded-full grid place-items-center text-[11px] font-semibold border transition-colors ${
+                    done ? 'bg-[hsl(var(--success))] border-[hsl(var(--success))] text-white'
+                    : now ? 'bg-primary border-primary text-primary-foreground'
+                    : 'bg-card border-border text-[hsl(var(--sub))]'}`}>
+                    {done ? '✓' : n}
+                  </span>
+                  <span className={`text-[12px] ${now ? 'font-semibold text-foreground' : done ? 'text-[hsl(var(--text2))]' : 'text-[hsl(var(--sub))]'}`}>{label}</span>
+                  {n < 3 && <span aria-hidden="true" className={`w-9 h-px ${done ? 'bg-[hsl(var(--success))]' : 'bg-border'}`} />}
+                </li>
+              )
+            })}
+          </ol>
 
           {/* ── FILES (drop zone + queue) — the workflow starts here ─────── */}
           <div
@@ -180,25 +209,72 @@ export default function ConvertTab({
             })}
           </div>
 
-          {/* ── OUTPUT MODE ──────────────────────────────────────────────── */}
+          {/* ── OUTPUT MODE (segmented) ──────────────────────────────────── */}
           <Card>
             <CardHeader><CardTitle>OUTPUT MODE</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-2 p-3">
+              <div className="grid grid-cols-3 gap-2 p-2 m-2 rounded-lg bg-secondary/60">
                 {MODES.map(m => (
                   <button key={m.id}
                     aria-pressed={mode===m.id}
-                    className={`flex items-center gap-3 p-2.5 rounded-lg border transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring ${mode===m.id ? 'border-primary bg-[hsl(var(--gold-dim))]' : 'border-transparent hover:bg-secondary/50'}`}
+                    className={`flex items-center gap-3 p-2.5 rounded-md transition-all cursor-pointer focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring ${mode===m.id ? 'bg-card shadow-sm ring-1 ring-border' : 'hover:bg-card/50'}`}
                     onClick={() => setMode(m.id)}>
                     <ModeIcon id={m.id} active={mode===m.id} />
                     <div className="flex flex-col items-start">
                       <span className="text-[12px] font-semibold text-foreground">{m.label}</span>
-                      {/* text2, not sub: the selected card's gold tint drops sub below 4.5:1 */}
                       <span className="text-[10px] text-[hsl(var(--text2))] leading-tight">{m.desc}</span>
                     </div>
-                    {mode===m.id && <span className="ml-auto text-primary text-sm">✓</span>}
                   </button>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── FORMAT (tiles with plain-English trade-offs) ─────────────── */}
+          <Card>
+            <CardHeader><CardTitle>FORMAT</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 p-3">
+                {FORMATS_OUT.map(f => (
+                  <button key={f.id}
+                    aria-pressed={formatOut===f.id}
+                    className={`relative flex flex-col items-start gap-0.5 px-3 py-2.5 rounded-lg border text-left transition-all cursor-pointer focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring ${
+                      formatOut===f.id
+                        ? 'border-primary bg-[hsl(var(--gold-dim))] shadow-sm'
+                        : 'border-border bg-card hover:border-[hsl(var(--sub))]'}`}
+                    onClick={() => setFormatOut(f.id)}>
+                    <span className="text-[13px] font-bold text-foreground">{f.label}</span>
+                    <span className="text-[10px] text-[hsl(var(--text2))] leading-tight">{f.desc}</span>
+                    {formatOut===f.id && <span aria-hidden="true" className="absolute top-1.5 right-2 text-[hsl(var(--gold-hi))] text-[11px]">✓</span>}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-end gap-3 flex-wrap px-3 pb-3">
+                <div className="min-w-[130px]">
+                  <Label className="mb-1 block" htmlFor="sample-rate">SAMPLE RATE</Label>
+                  <select id="sample-rate" className="flex h-8 w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground transition-colors focus:outline-hidden focus:border-primary cursor-pointer"
+                    value={formatOut === 'opus' ? '48000' : rate}
+                    disabled={formatOut === 'opus'}
+                    title={formatOut === 'opus' ? 'Opus is always 48 kHz' : ''}
+                    onChange={e => setRate(e.target.value)}>
+                    <option value="22050">22,050 Hz</option>
+                    <option value="44100">44,100 Hz</option>
+                    <option value="48000">48,000 Hz</option>
+                  </select>
+                </div>
+                {formatOut === 'mp3' && (
+                  <div>
+                    <Label className="mb-1 block">MP3 BITRATE</Label>
+                    <div className="flex gap-px bg-secondary rounded-md p-0.5">
+                      {MP3_BITRATES.map(b => (
+                        <button key={b.value} title={b.desc}
+                          aria-pressed={mp3Bitrate===b.value}
+                          className={`px-2.5 py-1.5 text-[11px] font-semibold rounded-md transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring ${mp3Bitrate===b.value ? 'bg-card text-foreground shadow-xs' : 'text-[hsl(var(--sub))] hover:text-[hsl(var(--text2))]'}`}
+                          onClick={() => setMp3Bitrate(b.value)}>{b.label}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -447,66 +523,35 @@ export default function ConvertTab({
             </CardContent>
           </Card>
 
-          {/* ── OPTIONS ──────────────────────────────────────────────────── */}
-          <div className="flex items-end gap-3 flex-wrap">
-            <div className="flex-1 min-w-[200px]">
-              <Label className="mb-1 block">CASE NAME</Label>
-              <Input value={caseName} placeholder="Auto-detected from filename — override here"
-                onChange={e => setCaseName(e.target.value)} />
-            </div>
-            <div className="flex-1 min-w-[200px]">
-              <Label className="mb-1 block">OUTPUT FOLDER</Label>
-              <div className="flex gap-1.5">
-                <Input className="flex-1" value={outDir} placeholder="Default: same folder as source"
-                  onChange={e => setOutDir(e.target.value)} />
-                <Button variant="default" size="sm" onClick={() => browseOutDir(setOutDir)}>Browse</Button>
-              </div>
-            </div>
-            <div className="min-w-[130px]">
-              <Label className="mb-1 block" htmlFor="sample-rate">SAMPLE RATE</Label>
-              <select id="sample-rate" className="flex h-8 w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground transition-colors focus:outline-hidden focus:border-primary cursor-pointer"
-                value={formatOut === 'opus' ? '48000' : rate}
-                disabled={formatOut === 'opus'}
-                title={formatOut === 'opus' ? 'Opus is always 48 kHz' : ''}
-                onChange={e => setRate(e.target.value)}>
-                <option value="22050">22,050 Hz</option>
-                <option value="44100">44,100 Hz</option>
-                <option value="48000">48,000 Hz</option>
-              </select>
-            </div>
-            <div>
-              <Label className="mb-1 block">OUTPUT FORMAT</Label>
-              <div className="flex gap-px bg-secondary rounded-md p-0.5">
-                {FORMATS_OUT.map(f => (
-                  <button key={f.id} title={f.desc}
-                    aria-pressed={formatOut===f.id}
-                    className={`px-2.5 py-1.5 text-[11px] font-semibold rounded-md transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring ${formatOut===f.id ? 'bg-card text-foreground shadow-xs' : 'text-[hsl(var(--sub))] hover:text-[hsl(var(--text2))]'}`}
-                    onClick={() => setFormatOut(f.id)}>{f.label}</button>
-                ))}
-              </div>
-            </div>
-            {formatOut === 'mp3' && (
-              <div>
-                <Label className="mb-1 block">MP3 BITRATE</Label>
-                <div className="flex gap-px bg-secondary rounded-md p-0.5">
-                  {MP3_BITRATES.map(b => (
-                    <button key={b.value} title={b.desc}
-                      aria-pressed={mp3Bitrate===b.value}
-                      className={`px-2.5 py-1.5 text-[11px] font-semibold rounded-md transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring ${mp3Bitrate===b.value ? 'bg-card text-foreground shadow-xs' : 'text-[hsl(var(--sub))] hover:text-[hsl(var(--text2))]'}`}
-                      onClick={() => setMp3Bitrate(b.value)}>{b.label}</button>
-                  ))}
+          {/* ── DESTINATION ──────────────────────────────────────────────── */}
+          <Card>
+            <CardHeader><CardTitle>DESTINATION</CardTitle></CardHeader>
+            <CardContent>
+              <div className="flex items-end gap-3 flex-wrap p-3">
+                <div className="flex-1 min-w-[200px]">
+                  <Label className="mb-1 block" htmlFor="case-name">CASE NAME</Label>
+                  <Input id="case-name" value={caseName} placeholder="Auto-detected from filename — override here"
+                    onChange={e => setCaseName(e.target.value)} />
+                </div>
+                <div className="flex-1 min-w-[200px]">
+                  <Label className="mb-1 block" htmlFor="out-dir">OUTPUT FOLDER</Label>
+                  <div className="flex gap-1.5">
+                    <Input id="out-dir" className="flex-1" value={outDir} placeholder="Default: same folder as source"
+                      onChange={e => setOutDir(e.target.value)} />
+                    <Button variant="default" size="sm" onClick={() => browseOutDir(setOutDir)}>Browse</Button>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
+            </CardContent>
+          </Card>
 
           <FormatTable />
 
         </div>
       </div>
 
-      <footer className="flex items-center justify-between px-7 py-3 border-t border-border/60 bg-card shrink-0">
-        <div className="flex items-center gap-2">
+      <footer className="flex items-center justify-between gap-4 px-7 py-3 border-t border-border/60 bg-card shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
           {converting && (
             <Badge variant="active">
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse mr-1.5" />
@@ -518,8 +563,15 @@ export default function ConvertTab({
               ✓ {doneCount} file{doneCount!==1?'s':''} converted{failCount>0?`, ${failCount} failed`:''}
             </Badge>
           )}
+          {!converting && doneCount === 0 && files.length > 0 && (
+            <p className="text-[12px] text-[hsl(var(--sub))] truncate">
+              Ready: <span className="font-semibold text-foreground">{formatLabel} · {modeLabel.toLowerCase()}</span>
+              {procCount > 0 && <> with {procCount} enhancement{procCount !== 1 ? 's' : ''}</>}
+              {' '}→ {outDir || 'same folder as source'}
+            </p>
+          )}
         </div>
-        <Button variant="primary" size="lg"
+        <Button variant="primary" size="lg" className="shrink-0"
           onClick={startConversion} disabled={converting||!files.length}>
           {converting ? <><Loader2 className="animate-spin h-3.5 w-3.5" />Converting…</> : <>▶ Convert{files.length > 1 ? ` ${files.length} Files` : ''}</>}
         </Button>
