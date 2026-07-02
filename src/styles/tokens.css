@@ -22,7 +22,7 @@
     --border: 210 38% 19%;
     --input: 210 38% 19%;
     --ring: 42 60% 49%;
-    --radius: 0.5rem;
+    --radius: 0.75rem;
     --gold: 42 60% 49%;
     --gold-hi: 42 55% 55%;
     --gold-dim: 42 60% 49% / 0.14;
@@ -45,35 +45,37 @@
     --color-green: #3a9e6a;
     --color-red: #c44e4e;
     --color-blue: #4a8fdf;
+    --shadow-card: 0 1px 2px hsl(213 30% 3% / 0.4);
   }
 
   .light {
-    --background: 36 24% 93%;
+    /* Docket redesign: cool neutral surfaces replace the warm sand ramp. */
+    --background: 220 14% 96%;
     --foreground: 218 25% 15%;
-    --card: 32 18% 87%;
+    --card: 0 0% 100%;
     --card-foreground: 218 25% 15%;
-    --popover: 32 18% 87%;
+    --popover: 0 0% 100%;
     --popover-foreground: 218 25% 15%;
     --primary: 36 78% 34%;
     /* Pure white, not sand: sand.100 renders 4.3:1 on the gold primary, below WCAG AA */
     --primary-foreground: 0 0% 100%;
-    --secondary: 32 14% 84%;
+    --secondary: 216 16% 94%;
     --secondary-foreground: 218 25% 15%;
-    --muted: 30 12% 73%;
+    --muted: 214 13% 82%;
     --muted-foreground: 213 14% 41%;
-    --accent: 32 14% 84%;
+    --accent: 216 16% 94%;
     --accent-foreground: 218 25% 15%;
     --destructive: 0 50% 54%;
     --destructive-foreground: 0 0% 100%;
-    --border: 28 12% 73%;
-    --input: 28 12% 73%;
+    --border: 216 15% 91%;
+    --input: 216 15% 91%;
     --ring: 36 78% 34%;
     --gold: 36 78% 34%;
     --gold-hi: 30 78% 27%;
     --gold-dim: 36 78% 34% / 0.10;
     --gold-glow: 36 78% 34% / 0.20;
-    --surface: 32 18% 90%;
-    --panel2: 32 14% 84%;
+    --surface: 210 20% 98%;
+    --panel2: 216 16% 94%;
     /* 37% lightness: hint text clears the 4.5:1 WCAG AA threshold on every light surface including secondary panels (42% rendered 4.14:1 there) */
     --sub: 213 14% 37%;
     --text2: 213 15% 34%;
@@ -87,5 +89,6 @@
     --color-green: #2d8a58;
     --color-red: #c44e4e;
     --color-blue: #3a7cc0;
+    --shadow-card: 0 1px 2px hsl(218 25% 15% / 0.05), 0 4px 16px hsl(218 25% 15% / 0.05);
   }
 }

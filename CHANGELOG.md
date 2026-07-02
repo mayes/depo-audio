@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Changed — "Docket" redesign (part 1)
+- **Sidebar navigation** replaces the top tab bar: icons + labels, number-key shortcuts (1–4), the case-library count, and a live system-health card (FFmpeg status, installed AI models, update state) with Settings and theme at the bottom. Collapses to an icon rail on narrow windows.
+- **Guided steps on Convert** — a state-driven "Add recording → Choose settings → Convert" stepper shows where you are without hiding anything; the whole page still works at once for batch users.
+- **Format tiles** with plain-English trade-offs replace the small format buttons; sample rate and MP3 bitrate live alongside them.
+- **Output mode** is now a segmented control; scan findings appear as green "Recommended" pills on the matching enhancement toggles; the action bar summarizes what's about to happen ("Ready: MP3 · mix to stereo with 2 enhancements → same folder as source").
+- **Light theme retuned** to cool neutrals with white cards and soft shadows (dark theme keeps its ink palette with the new structure); corner radius increased app-wide. All via design tokens; both themes remain WCAG 2.2 AA (axe-verified, 0 violations).
+
 ### Fixed
 - **AI feature scan no longer hangs on long recordings** — analysis (loudness, noise floor, VAD, Smart-Turn, speaker count, quality) now reads a bounded sample of each file instead of the whole thing, so the Scan finishes in seconds-to-minutes regardless of length (a multi-hour multichannel deposition previously ran tens of thousands of ONNX inferences and effectively never completed). Every analysis FFmpeg pass also has a timeout backstop.
 - **App now closes immediately** — closing the window quits the process directly, so an in-flight scan or conversion (synchronous ONNX inference + ffmpeg subprocesses) can no longer leave the app stuck on exit.
